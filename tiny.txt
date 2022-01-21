@@ -1,0 +1,11 @@
+print('hello world')
+dm = DataModule()
+model = Model()
+trainer.fit(model, dm)
+trainer.test(datamodule=dm)
+def train_dataloader(self):
+return DataLoader(self.train_set,batch_size=self.batch_size)
+def val_dataloader(self):
+return DataLoader(self.test_set,batch_size=self.batch_size)
+def test_dataloader(self): 
+return DataLoader(self.valid_set, batch_size=self.batch_size)
