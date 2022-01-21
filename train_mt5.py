@@ -417,12 +417,13 @@ def _add_arguments(parser, args_dict):
     for key in args_dict:
         option_name = f'--{key}'
         default = args_dict[key]
-        if default == False:
-            parser.add_argument(
-                option_name, action='store_true', default=default)
-        elif default == True:
-            parser.add_argument(
-                option_name, action='store_false', default=default)
+        if isinstance(default, bool):
+            if default == False:
+                parser.add_argument(
+                    option_name, action='store_true', default=default)
+            elif default == True:
+                parser.add_argument(
+                    option_name, action='store_false', default=default)
         elif isinstance(default, int):
             parser.add_argument(option_name, type=int, default=default)
         elif isinstance(default, float):
