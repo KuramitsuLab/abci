@@ -74,7 +74,7 @@ args_dict = dict(
     max_seq_length=128,
     target_max_seq_length=128,
     # unsupervised training option
-    unsupervised_training=False,
+    mlm=False,
     masking_ratio=0.15,
     bert_style=False,
 )
@@ -141,7 +141,7 @@ class MT5FineTuner(pl.LightningModule):
         """バリデーション完了処理"""
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
         self.log("val_loss", avg_loss, prog_bar=True)
-        logging.info(f'loss {avg_loss} PPL {math.exp(avg_loss)}')
+        #logging.info(f'loss {avg_loss} PPL {math.exp(avg_loss)}')
         self.update_kfold()
 
     def test_step(self, batch, batch_idx):
@@ -185,7 +185,9 @@ class MT5FineTuner(pl.LightningModule):
 
     def get_dataset(self):
         """データセットを作成する"""
-        return MaskedDataset(self.hparams, tokenizer=self.tokenizer)
+        if self.hparams.mlm:
+            return MaskedDataset(self.hparams, tokenizer=self.tokenizer)
+        return T5Dataset(self.hparams, tokenizer=self.tokenizer)
 
     def setup(self, stage=None):
         """初期設定（データセットの読み込み）"""
@@ -216,8 +218,8 @@ class MT5FineTuner(pl.LightningModule):
                 range(len(self.dataset)), test_size=valid_size, random_state=None)
             self.train_dataset.indices = train_index
             self.valid_dataset.indices = valid_index
-            logging.info(
-                f'{self.hparams.k_fold}-fold cross validation: {len(train_index)} {valid_index}')
+            # logging.info(
+            #     f'{self.hparams.k_fold}-fold cross validation: {len(train_index)} {valid_index}')
 
     def train_dataloader(self):
         """訓練データローダーを作成する"""
@@ -235,14 +237,6 @@ class MT5FineTuner(pl.LightningModule):
 
 # DataSet
 class Subset(Dataset):
-    """
-    Subset of a dataset at specified indices.
-
-    Arguments:
-        dataset (Dataset): The whole Dataset
-        indices (sequence): Indices in the whole set selected for subset
-    """
-
     def __init__(self, dataset, indices):
         self.dataset = dataset
         self.indices = indices
@@ -271,9 +265,9 @@ class T5Dataset(Dataset):
     def transform(self, pair):
         src, tgt = pair
         inputs = self.tokenizer.batch_encode_plus(
-            [src], max_length=self.hparams.max_seq_length, truncation=True, return_tensors="pt")
+            [src], max_length=self.hparams.max_seq_length, truncation=True, padding="max_length", return_tensors="pt")
         targets = self.tokenizer.batch_encode_plus(
-            [tgt], max_length=self.target_max_seq_length, truncation=True, return_tensors="pt")
+            [tgt], max_length=self.hparams.target_max_seq_length, truncation=True, padding="max_length", return_tensors="pt")
 
         source_ids = inputs["input_ids"].squeeze()
         source_mask = inputs["attention_mask"].squeeze()
@@ -423,16 +417,18 @@ def _add_arguments(parser, args_dict):
     for key in args_dict:
         option_name = f'--{key}'
         default = args_dict[key]
-        if isinstance(default, int):
+        if default == False:
+            parser.add_argument(
+                option_name, action='store_true', default=default)
+        elif default == True:
+            parser.add_argument(
+                option_name, action='store_false', default=default)
+        elif isinstance(default, int):
             parser.add_argument(option_name, type=int, default=default)
         elif isinstance(default, float):
             parser.add_argument(option_name, type=float, default=default)
         elif isinstance(default, str):
             parser.add_argument(option_name, default=default)
-        elif default == False:
-            parser.add_argument(option_name, action='store_true')
-        elif default == True:
-            parser.add_argument(option_name, action='store_false')
 
 
 def _setup_hparams():
@@ -440,8 +436,8 @@ def _setup_hparams():
     parser.add_argument('files', nargs='+', help='files')
     _add_arguments(parser, args_dict)
 
-    parser.add_argument('-e', '--epochs', help='epochs',
-                        type=int, default=50)
+    # parser.add_argument('-e', '--epochs', help='epochs',
+    #                     type=int, default=50)
     # parser.add_argument('--zip', action='store_true',
     #                     help='Save the model as a zip file')
     parser.add_argument('-q', '--quantize', action='store_true',
