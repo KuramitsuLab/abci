@@ -36,6 +36,7 @@ N_GPU = torch.cuda.device_count()
 
 FILE_SUFFIX = f'{datetime.datetime.now():%Y%m%dT%H%M%S}'
 
+
 def _set_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
@@ -67,7 +68,7 @@ args_dict = dict(
     max_grad_norm=1.0,
     seed=42,
     # data loader
-    encoding='utf_8',
+    encoding='utf8',
     column=0, target_column=1,
     k_fold=5,  # cross validation
     max_seq_length=128,
@@ -173,11 +174,13 @@ class MT5FineTuner(pl.LightningModule):
         optimizer = AdamW(optimizer_grouped_parameters,
                           lr=self.hparams.learning_rate,
                           eps=self.hparams.adam_epsilon)
+
         scheduler = get_linear_schedule_with_warmup(
             optimizer,
             num_warmup_steps=self.hparams.warmup_steps,
             num_training_steps=self.t_total
         )
+
         return [optimizer], [{"scheduler": scheduler, "interval": "step", "frequency": 1}]
 
     def get_dataset(self):
@@ -330,8 +333,6 @@ def transform_nop(x):
 
 
 debug_count_masking = 0
-
-
 
 
 class MaskedDataset(T5Dataset):
