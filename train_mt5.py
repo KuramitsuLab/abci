@@ -56,13 +56,13 @@ args_dict = dict(
     # data loader
     encoding='utf_8',
     column=0, target_column=1,
-    k_fold=5,  # cross validation
+    kfold=5,  # cross validation
     max_seq_length=128,
     target_max_seq_length=128,
     # unsupervised training option
-    mlm=False,
+    masking=False,
     masking_ratio=0.15,
-    bert_style=False,
+    masking_style='denoising_objective',
 )
 
 
@@ -122,8 +122,8 @@ class MT5FineTuner(pl.LightningModule):
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
         self.log("val_loss", avg_loss, prog_bar=True)
         #logging.info(f'loss {avg_loss} PPL {math.exp(avg_loss)}')
-        print('@@', 'cross validation')
-        self.update_kfold()
+        #print('@@', 'cross validation')
+        self.dataset.split()
 
     def test_step(self, batch, batch_idx):
         """テストステップ処理"""
@@ -180,10 +180,9 @@ class MT5FineTuner(pl.LightningModule):
                 * float(self.hparams.num_train_epochs)
             )
 
-    def update_kfold(self):
-        self.dataset.split()
-        # logging.info(
-        #     f'{self.hparams.k_fold}-fold cross validation: {len(train_index)} {valid_index}')
+    # def update_kfold(self):
+    #     # logging.info(
+    #     #     f'{self.hparams.k_fold}-fold cross validation: {len(train_index)} {valid_index}')
 
     def train_dataloader(self):
         """訓練データローダーを作成する"""
@@ -214,9 +213,9 @@ def _main():
         # da
         da_choice=0.1, da_shuffle=0.3,
         # unsupervised training option
-        mlm=False,
+        masking=False,
         masking_ratio=0.15,
-        bert_style=False,
+        masking_style='denoising objective',
         # training
         learning_rate=3e-4,
         weight_decay=0.0,
@@ -229,7 +228,7 @@ def _main():
         n_gpu=N_GPU if USE_GPU else 0,
         early_stop_callback=False,
         # if you want to enable 16-bit training then install apex and set this to true
-        fp_16=True if USE_GPU else False,
+        fp_16=False if USE_GPU else False,
         opt_level='O2',
         max_grad_norm=1.0,
     )

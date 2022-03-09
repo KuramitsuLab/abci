@@ -1,4 +1,3 @@
-from multiese2_da import transform_multiese
 import io
 import os
 import json
@@ -7,11 +6,15 @@ import csv
 import argparse
 import random
 import logging
+from logging import INFO, DEBUG, NOTSET
+from logging import StreamHandler, FileHandler, Formatter
 
 import torch
 from torch.utils.data import Dataset
+from multiese2_da import transform_multiese
+from masking_python import get_transform_masking
 
-from transformers import AutoTokenizer
+#from transformers import AutoTokenizer
 #tokenizer = AutoTokenizer.from_pretrained("sonoisa/t5-base-japanese")
 
 
@@ -68,37 +71,21 @@ class DADataset(Dataset):
         self.dataset = dataset
         if self.dataset is None:
             self.dataset = _loading_dataset(self.hparams)
+        if hparams.masking:
+            self.transform = get_transform_masking(hparams)
+        else:
+            self.transform = transform_multiese
         self.encode = hparams.encode
 
     def __len__(self):
         return len(self.dataset)
 
     def __getitem__(self, index):
-        return self.encode(self.dataset[index], self.hparams)
+        src, tgt = self.transform(self.dataset[index], self.hparams)
+        return self.encode(src, tgt, self.hparams)
 
     def clone(self, new_dataset):
         return self.__class__(self.hparams, new_dataset)
-
-    # def random_split(self, train_size=0.7, test_size=0):
-    #     random.shuffle(self.dataset)
-    #     size = len(self.dataset)
-    #     test_size = self._ratio_size(test_size, size)
-    #     if test_size < size:
-    #         size -= test_size
-    #     else:
-    #         test_size = 0
-    #     train_size = self._ratio_size(train_size, size)
-    #     trainset = self.dataset[:train_size]
-    #     validset = self.dataset[train_size:size]
-    #     if test_size > 0:
-    #         testset = self.dataset[size:]
-    #         return self.clone(trainset), self.clone(validset), self.clone(testset)
-    #     return self.clone(trainset), self.clone(validset)
-
-    # def _ratio_size(self, ratio, len):
-    #     if ratio <= 1.0:
-    #         return int(len * ratio)
-    #     return ratio
 
 
 class Subset(Dataset):
@@ -148,12 +135,13 @@ class KFoldDataset(Dataset):
 # MULTITASKING_TRANSFORM
 
 
-def transform_nmt(pair, hparams):
+def transform_nop(pair, hparams):
+    if isinstance(pair, str):
+        return pair, pair
     return pair
 
 
-def encode_t5(pair, hparams):
-    src, tgt = hparams.transform(pair, hparams)
+def encode_t5(src, tgt, hparams):
     inputs = hparams.tokenizer.batch_encode_plus(
         [src], max_length=hparams.max_seq_length, truncation=True, padding="max_length", return_tensors="pt")
     targets = hparams.tokenizer.batch_encode_plus(
@@ -169,18 +157,17 @@ def encode_t5(pair, hparams):
             "target_ids": target_ids, "target_mask": target_mask}
 
 
-def encode_string(pair, hparams):
-    src, tgt = hparams.transform(pair, hparams)
+def encode_string(src, tgt, hparams):
     return src, tgt
 
 
-# extra_id
-# denosing objective
+# # extra_id
+# # denosing objective
 
-EOS = 1
-ID = 250099
-EXTRA_ID = {
-}
+# EOS = 1
+# ID = 250099
+# EXTRA_ID = {
+# }
 
 
 def _setup_extra_id(hparams):
@@ -188,63 +175,63 @@ def _setup_extra_id(hparams):
         hparams.tokenizer.add_tokens(
             [f'<extra_id_{i}>' for i in range(100)])
         hparams.vocab_size += 100
-    for c in range(100):
-        EXTRA_ID[c] = hparams.tokenizer.vocab[f'<extra_id_{c}>']
+    # for c in range(100):
+    #     EXTRA_ID[c] = hparams.tokenizer.vocab[f'<extra_id_{c}>']
 
 
-def _extra_id(tokenizer, c):
-    return EXTRA_ID[c]  # 250099 - c
+# def _extra_id(tokenizer, c):
+#     return EXTRA_ID[c]  # 250099 - c
 
 
-def _masking_pad(input_ids, masked, max_length=128):
-    c = 0
-    prev_index = None
-    for index in masked:
-        if prev_index == index - 1:
-            input_ids[index] = None
-        else:
-            input_ids[index] = _extra_id(c)  # ID - c
-            c += 1
-        prev_index = index
-    s = [ids for ids in input_ids if ids != None] + [EOS]
-    pad = [0] * (max_length-len(s))
-    return s + pad, [1] * len(s) + pad
+# def _masking_pad(input_ids, masked, max_length=128):
+#     c = 0
+#     prev_index = None
+#     for index in masked:
+#         if prev_index == index - 1:
+#             input_ids[index] = None
+#         else:
+#             input_ids[index] = _extra_id(c)  # ID - c
+#             c += 1
+#         prev_index = index
+#     s = [ids for ids in input_ids if ids != None] + [EOS]
+#     pad = [0] * (max_length-len(s))
+#     return s + pad, [1] * len(s) + pad
 
 
-def encode_denoising_objective(line, hparams):
-    inputs = hparams.tokenizer.batch_encode_plus(
-        [line], max_length=hparams.max_seq_length, truncation=True, return_tensors="pt")
-    print(inputs)
-    input_ids = inputs["input_ids"].squeeze().tolist()
-    input_ids = input_ids[:-1]  # </s> を除いたinputs のlist
-    n_tokens = len(input_ids)   # 字句数
-    n = max(int((n_tokens / 2) * hparams.masking_ratio), 1)
-    input_masked = sorted(random.sample(list(range(0, n_tokens)), n))
-    source, source_attn = _masking_pad(
-        input_ids[:], input_masked, hparams.max_seq_length)
-    output_masked = list(
-        set(list(range(0, n_tokens))) - set(input_masked))
-    target, target_attn = _masking_pad(
-        input_ids[:], output_masked, hparams.max_seq_length)
-    return {"source_ids": torch.tensor(source), "source_mask": torch.tensor(source_attn),
-            "target_ids": torch.tensor(target), "target_mask": torch.tensor(target_attn)}
+# def encode_denoising_objective(line, hparams):
+#     inputs = hparams.tokenizer.batch_encode_plus(
+#         [line], max_length=hparams.max_seq_length, truncation=True, return_tensors="pt")
+#     print(inputs)
+#     input_ids = inputs["input_ids"].squeeze().tolist()
+#     input_ids = input_ids[:-1]  # </s> を除いたinputs のlist
+#     n_tokens = len(input_ids)   # 字句数
+#     n = max(int((n_tokens / 2) * hparams.masking_ratio), 1)
+#     input_masked = sorted(random.sample(list(range(0, n_tokens)), n))
+#     source, source_attn = _masking_pad(
+#         input_ids[:], input_masked, hparams.max_seq_length)
+#     output_masked = list(
+#         set(list(range(0, n_tokens))) - set(input_masked))
+#     target, target_attn = _masking_pad(
+#         input_ids[:], output_masked, hparams.max_seq_length)
+#     return {"source_ids": torch.tensor(source), "source_mask": torch.tensor(source_attn),
+#             "target_ids": torch.tensor(target), "target_mask": torch.tensor(target_attn)}
 
 
-def encode_bert_style(line, hparams):
-    inputs = hparams.tokenizer.batch_encode_plus(
-        [line], max_length=hparams.max_seq_length, truncation=True, return_tensors="pt")
-    # print(inputs)
-    input_ids = inputs["input_ids"].squeeze().tolist()
-    input_ids = input_ids[:-1]  # </s> を除いたinputs のlist
-    n_tokens = len(input_ids)   # 字句数
-    n = max(int((n_tokens / 2) * hparams.masking_ratio), 1)
-    input_masked = sorted(random.sample(list(range(0, n_tokens)), n))
-    source, source_attn = _masking_pad(
-        input_ids[:], input_masked, hparams.max_seq_length)
-    targets = hparams.tokenizer.batch_encode_plus(
-        [line], max_length=hparams.max_seq_length, truncation=True, padding="max_length", return_tensors="pt")
-    return {"source_ids": torch.tensor(source), "source_mask": torch.tensor(source_attn),
-            "target_ids": targets["input_ids"].squeeze(), "target_mask": targets["attention_mask"].squeeze()}
+# def encode_bert_style(line, hparams):
+#     inputs = hparams.tokenizer.batch_encode_plus(
+#         [line], max_length=hparams.max_seq_length, truncation=True, return_tensors="pt")
+#     # print(inputs)
+#     input_ids = inputs["input_ids"].squeeze().tolist()
+#     input_ids = input_ids[:-1]  # </s> を除いたinputs のlist
+#     n_tokens = len(input_ids)   # 字句数
+#     n = max(int((n_tokens / 2) * hparams.masking_ratio), 1)
+#     input_masked = sorted(random.sample(list(range(0, n_tokens)), n))
+#     source, source_attn = _masking_pad(
+#         input_ids[:], input_masked, hparams.max_seq_length)
+#     targets = hparams.tokenizer.batch_encode_plus(
+#         [line], max_length=hparams.max_seq_length, truncation=True, padding="max_length", return_tensors="pt")
+#     return {"source_ids": torch.tensor(source), "source_mask": torch.tensor(source_attn),
+#             "target_ids": targets["input_ids"].squeeze(), "target_mask": targets["attention_mask"].squeeze()}
 
 # argparse
 
@@ -276,17 +263,31 @@ def _add_arguments(parser, args_dict):
             parser.add_argument(option_name, default=default)
 
 
-def init_hparams(init_dict, description='Trainer of mT5 on ABCI', Tokenizer=None, transform=transform_multiese):
+def init_hparams(init_dict, description='Trainer of mT5 on ABCI', Tokenizer=None):
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('files', nargs='+', help='files')
+    parser.add_argument('--name', type=str, default='', help='project name')
     _add_arguments(parser, init_dict)
     # parser.add_argument('-q', '--quantize', action='store_true',
     #                     help='quantize model')
     hparams = parser.parse_args()
+
+    if hparams.name == '':
+        hparams.suffix = ''
+    else:
+        hparams.suffix = f'_{hparams.name}'
+
     _set_seed(hparams.seed)
 
     if not os.path.isdir(hparams.output_dir):
         os.makedirs(hparams.output_dir)
+
+    if hparams.masking or hparams.target_column == -1:
+        hparams.masking = True
+        hparams.target_column = -1
+    #     hparams.transform = get_transform_masking(hparams)
+    # else:
+    #     hparams.transform = transform_multiese
 
     if hparams.additional_tokens == '':
         hparams.additional_special_tokens = None
@@ -295,28 +296,48 @@ def init_hparams(init_dict, description='Trainer of mT5 on ABCI', Tokenizer=None
 
     if Tokenizer is None:
         hparams.encode = encode_string
-        if hparams.mlm:
-            hparams.target_column = -1
     else:
+        if not hasattr(hparams, 'use_fast_tokenizer'):
+            hparams.use_fast_tokenizer = False
+        os.environ['TOKENIZERS_PARALLELISM'] = 'false'
         hparams.tokenizer = Tokenizer.from_pretrained(
-            hparams.tokenizer_name_or_path, is_fast=True)
+            hparams.tokenizer_name_or_path, is_fast=hparams.use_fast_tokenizer)
         hparams.vocab_size = hparams.tokenizer.vocab_size
         if not hparams.additional_tokens:
             hparams.tokenizer.add_tokens(hparams.additional_tokens)
             hparams.vocab_size += len(hparams.additional_tokens)
-        if hparams.mlm:
-            hparams.encode = encode_denoising_objective
-            hparams.target_column = -1
+        if hparams.masking:
             _setup_extra_id(hparams)
-        else:
-            hparams.encode = encode_t5
+        hparams.encode = encode_t5
 
-    hparams.transform = transform
     if not hasattr(hparams, 'da_choice'):
         hparams.da_choice = 0.1
     if not hasattr(hparams, 'da_shuffle'):
         hparams.da_shuffle = 0.3
+    _setup_logger(hparams)
     return hparams
+
+
+def _setup_logger(hparams):
+    log_file = f'log{hparams.suffix}.txt'
+
+    # ストリームハンドラの設定
+    stream_handler = StreamHandler()
+    stream_handler.setLevel(INFO)
+    stream_handler.setFormatter(Formatter("%(message)s"))
+
+    # ファイルハンドラの設定
+    file_handler = FileHandler(log_file)
+
+    file_handler.setLevel(DEBUG)
+    file_handler.setFormatter(
+        Formatter(
+            "%(asctime)s@ %(name)s [%(levelname)s] %(funcName)s: %(message)s")
+    )
+    # ルートロガーの設定
+    logging.basicConfig(level=NOTSET, handlers=[stream_handler, file_handler])
+    logging.info(f'PyTorch: {torch.__version__}')
+    logging.info(f'hparams: {hparams}')
 
 
 def _main():
@@ -334,11 +355,11 @@ def _main():
         # da
         da_choice=0.1, da_shuffle=0.3,
         # unsupervised training option
-        mlm=False,
-        masking_ratio=0.15,
-        bert_style=False,
+        masking=False,
+        masking_ratio=0.35,
+        masking_style='denoising_objective',
     )
-    hparams = init_hparams(init_dict, transform=transform_multiese)
+    hparams = init_hparams(init_dict)
     print(hparams)
     dataset = KFoldDataset(DADataset(hparams))
     train, valid = dataset.split()
