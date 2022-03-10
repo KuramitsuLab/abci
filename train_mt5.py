@@ -173,7 +173,7 @@ def _main():
         adam_epsilon=1e-8,
         warmup_steps=0,
         batch_size=8,
-        num_workers=os.cpu_count(),
+        num_workers=2,  # os.cpu_count(),
         # train_batch_size=8,
         # eval_batch_size=8,
         max_epochs=50,
