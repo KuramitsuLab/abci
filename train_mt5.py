@@ -1,69 +1,22 @@
-
-# インポート
-from daloader import init_hparams
-from logging import INFO, DEBUG, NOTSET
-from logging import StreamHandler, FileHandler, Formatter
-import numpy as np
-import random
-
-import datetime
-
 import torch
 from torch.utils.data import DataLoader
-from sklearn.model_selection import train_test_split
+from torch.optim import AdamW
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from transformers import (
-    AdamW,
     MT5ForConditionalGeneration,
-    AutoTokenizer,
+    AutoConfig, AutoModel, AutoTokenizer,
     get_linear_schedule_with_warmup
 )
+import os
 import logging
 
-from daloader import DADataset, KFoldDataset
+from da_dataset import init_hparams, DADataset, KFoldDataset
 
 # GPU利用有無
 USE_GPU = torch.cuda.is_available()
 N_GPU = torch.cuda.device_count()
-
-FILE_SUFFIX = f'{datetime.datetime.now():%Y%m%dT%H%M%S}'
-
-
-args_dict = dict(
-    # data_dir='./',  # path for data files
-    output_dir='./model',  # path to save the checkpoints
-    output_suffix=FILE_SUFFIX,
-    model_name_or_path='google/mt5-small',
-    tokenizer_name_or_path='google/mt5-small',
-    additional_special_tokens='',
-    learning_rate=3e-4,
-    weight_decay=0.0,
-    adam_epsilon=1e-8,
-    warmup_steps=0,
-    train_batch_size=8,
-    eval_batch_size=8,
-    num_train_epochs=2,
-    gradient_accumulation_steps=1,  # 16
-    n_gpu=N_GPU if USE_GPU else 0,
-    early_stop_callback=False,
-    # if you want to enable 16-bit training then install apex and set this to true
-    fp_16=True if USE_GPU else False,
-    opt_level='O2',
-    max_grad_norm=1.0,
-    seed=42,
-    # data loader
-    encoding='utf_8',
-    column=0, target_column=1,
-    kfold=5,  # cross validation
-    max_seq_length=128,
-    target_max_seq_length=128,
-    # unsupervised training option
-    masking=False,
-    masking_ratio=0.15,
-    masking_style='denoising_objective',
-)
 
 
 class MT5FineTuner(pl.LightningModule):
@@ -74,6 +27,8 @@ class MT5FineTuner(pl.LightningModule):
         # 事前学習済みモデルの読み込み
         self.model = MT5ForConditionalGeneration.from_pretrained(
             self.hparams.model_name_or_path)
+        # config = AutoConfig.from_pretrained(self.hparams.model_name_or_path)
+        # self.model = AutoModel.from_config(config)
         self.tokenizer = self.hparams.tokenizer
         self.train_dataset = None
 
@@ -168,34 +123,30 @@ class MT5FineTuner(pl.LightningModule):
 
     def setup(self, stage=None):
         """初期設定（データセットの読み込み）"""
-        print('@@', stage)
         if stage == 'fit' or stage is None:
             if self.train_dataset is None:
                 self.dataset = self.get_dataset()
                 self.train_dataset, self.valid_dataset = self.dataset.split()
             self.t_total = (
                 (len(self.train_dataset) //
-                 (self.hparams.train_batch_size * max(1, self.hparams.n_gpu)))
+                 (self.hparams.batch_size * max(1, self.hparams.n_gpu)))
                 // self.hparams.gradient_accumulation_steps
-                * float(self.hparams.num_train_epochs)
+                * float(self.hparams.max_epochs)
             )
-
-    # def update_kfold(self):
-    #     # logging.info(
-    #     #     f'{self.hparams.k_fold}-fold cross validation: {len(train_index)} {valid_index}')
 
     def train_dataloader(self):
         """訓練データローダーを作成する"""
-        logging.info('loading train data loader')
+        #logging.info('loading train data loader')
         return DataLoader(self.train_dataset,
-                          batch_size=self.hparams.train_batch_size,
-                          drop_last=True, shuffle=True, num_workers=4)
+                          batch_size=self.hparams.batch_size,
+                          drop_last=True, shuffle=True,
+                          num_workers=self.hparams.num_workers)
 
     def val_dataloader(self):
         """バリデーションデータローダーを作成する"""
         return DataLoader(self.valid_dataset,
-                          batch_size=self.hparams.eval_batch_size,
-                          num_workers=4)
+                          batch_size=self.hparams.batch_size,
+                          num_workers=self.hparams.num_workers)
 
 
 def _main():
@@ -215,20 +166,23 @@ def _main():
         # unsupervised training option
         masking=False,
         masking_ratio=0.15,
-        masking_style='denoising objective',
+        masking_style='denoising',
         # training
         learning_rate=3e-4,
         weight_decay=0.0,
         adam_epsilon=1e-8,
         warmup_steps=0,
-        train_batch_size=8,
-        eval_batch_size=8,
-        num_train_epochs=2,
+        batch_size=8,
+        num_workers=os.cpu_count(),
+        # train_batch_size=8,
+        # eval_batch_size=8,
+        max_epochs=50,
+        limit_batches=-1,
         gradient_accumulation_steps=1,  # 16
-        n_gpu=N_GPU if USE_GPU else 0,
+        n_gpu=1 if USE_GPU else 0,
         early_stop_callback=False,
         # if you want to enable 16-bit training then install apex and set this to true
-        fp_16=False if USE_GPU else False,
+        fp_16=False,
         opt_level='O2',
         max_grad_norm=1.0,
     )
@@ -241,17 +195,28 @@ def _main():
     train_params = dict(
         accumulate_grad_batches=hparams.gradient_accumulation_steps,
         gpus=hparams.n_gpu,
-        max_epochs=hparams.num_train_epochs,
+        max_epochs=hparams.max_epochs,
         # early_stop_callback=False,
         precision=16 if hparams.fp_16 else 32,
         # amp_level=hparams.opt_level,
         gradient_clip_val=hparams.max_grad_norm,
         #    checkpoint_callback=checkpoint_callback,
         # callbacks=[LoggingCallback()],
+        callbacks=[EarlyStopping(monitor="val_loss")],
+        # turn off automatic checkpointing
+        enable_checkpointing=False,
+        # run batch size scaling, result overrides hparams.batch_size
+        auto_scale_batch_size="binsearch" if hparams.batch_size <= 2 else None,
+        # run learning rate finder, results override hparams.learning_rate
+        # auto_lr_find=True,
+        devices="auto", accelerator="auto",
+        limit_train_batches=1.0 if hparams.limit_batches == -1 else hparams.limit_batches,
+        limit_val_batches=1.0 if hparams.limit_batches == -1 else hparams.limit_batches//4,
     )
 
     model = MT5FineTuner(hparams)
     trainer = pl.Trainer(**train_params)
+    trainer.tune(model)
     trainer.fit(model)
 
     # 最終エポックのモデルを保存

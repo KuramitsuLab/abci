@@ -11,8 +11,8 @@ from logging import StreamHandler, FileHandler, Formatter
 
 import torch
 from torch.utils.data import Dataset
-from multiese2_da import transform_multiese
-from masking_python import get_transform_masking
+from da_multiese import transform_multiese
+from da_masking import get_transform_masking
 
 #from transformers import AutoTokenizer
 #tokenizer = AutoTokenizer.from_pretrained("sonoisa/t5-base-japanese")
@@ -175,63 +175,6 @@ def _setup_extra_id(hparams):
         hparams.tokenizer.add_tokens(
             [f'<extra_id_{i}>' for i in range(100)])
         hparams.vocab_size += 100
-    # for c in range(100):
-    #     EXTRA_ID[c] = hparams.tokenizer.vocab[f'<extra_id_{c}>']
-
-
-# def _extra_id(tokenizer, c):
-#     return EXTRA_ID[c]  # 250099 - c
-
-
-# def _masking_pad(input_ids, masked, max_length=128):
-#     c = 0
-#     prev_index = None
-#     for index in masked:
-#         if prev_index == index - 1:
-#             input_ids[index] = None
-#         else:
-#             input_ids[index] = _extra_id(c)  # ID - c
-#             c += 1
-#         prev_index = index
-#     s = [ids for ids in input_ids if ids != None] + [EOS]
-#     pad = [0] * (max_length-len(s))
-#     return s + pad, [1] * len(s) + pad
-
-
-# def encode_denoising_objective(line, hparams):
-#     inputs = hparams.tokenizer.batch_encode_plus(
-#         [line], max_length=hparams.max_seq_length, truncation=True, return_tensors="pt")
-#     print(inputs)
-#     input_ids = inputs["input_ids"].squeeze().tolist()
-#     input_ids = input_ids[:-1]  # </s> を除いたinputs のlist
-#     n_tokens = len(input_ids)   # 字句数
-#     n = max(int((n_tokens / 2) * hparams.masking_ratio), 1)
-#     input_masked = sorted(random.sample(list(range(0, n_tokens)), n))
-#     source, source_attn = _masking_pad(
-#         input_ids[:], input_masked, hparams.max_seq_length)
-#     output_masked = list(
-#         set(list(range(0, n_tokens))) - set(input_masked))
-#     target, target_attn = _masking_pad(
-#         input_ids[:], output_masked, hparams.max_seq_length)
-#     return {"source_ids": torch.tensor(source), "source_mask": torch.tensor(source_attn),
-#             "target_ids": torch.tensor(target), "target_mask": torch.tensor(target_attn)}
-
-
-# def encode_bert_style(line, hparams):
-#     inputs = hparams.tokenizer.batch_encode_plus(
-#         [line], max_length=hparams.max_seq_length, truncation=True, return_tensors="pt")
-#     # print(inputs)
-#     input_ids = inputs["input_ids"].squeeze().tolist()
-#     input_ids = input_ids[:-1]  # </s> を除いたinputs のlist
-#     n_tokens = len(input_ids)   # 字句数
-#     n = max(int((n_tokens / 2) * hparams.masking_ratio), 1)
-#     input_masked = sorted(random.sample(list(range(0, n_tokens)), n))
-#     source, source_attn = _masking_pad(
-#         input_ids[:], input_masked, hparams.max_seq_length)
-#     targets = hparams.tokenizer.batch_encode_plus(
-#         [line], max_length=hparams.max_seq_length, truncation=True, padding="max_length", return_tensors="pt")
-#     return {"source_ids": torch.tensor(source), "source_mask": torch.tensor(source_attn),
-#             "target_ids": targets["input_ids"].squeeze(), "target_mask": targets["attention_mask"].squeeze()}
 
 # argparse
 
