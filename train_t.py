@@ -241,9 +241,9 @@ setup = dict(
     # da
     da_choice=0.5, da_shuffle=0.3,
     # unsupervised training option
-    mlm=False,
-    masking_ratio=0.15,
-    bert_style=False,
+    masking=False,
+    masking_ratio=0.35,
+    masking_style='denoising',
     # training
     max_epochs=50,
     num_workers=2,  # os.cpu_count(),
