@@ -165,7 +165,7 @@ def _main():
         da_choice=0.1, da_shuffle=0.3,
         # unsupervised training option
         masking=False,
-        masking_ratio=0.15,
+        masking_ratio=0.35,
         masking_style='denoising',
         # training
         learning_rate=3e-4,
