@@ -173,7 +173,13 @@ def _replace(doc, oldnews):
     return doc.replace('@', '')
 
 
-def encode_translate(text, code, choice=0.1, shuffle=0.5):
+def _reverse_replace(doc, oldnews):
+    for new, old in oldnews:
+        doc = doc.replace(old, new)
+    return doc.replace('</s>', '')
+
+
+def encode_translate(text, code, choice=0.5, shuffle=0.3):
     text = multiese_da(text, choice=choice, shuffle=shuffle) + ' '
     names = [x[1] for x in VARPAT.findall(text) if x[1] in code]
     d = {}
@@ -205,6 +211,32 @@ def transform_multiese(pair, hparams):
     tgt = multiese_da(tgt, choice=hparams.da_choice,
                       shuffle=hparams.da_shuffle)
     return src, tgt
+
+
+def compose_testing(gen_fn, trans_prefix='trans'):
+    def testing(src, tgt):
+        if src.startswith(trans_prefix):
+            names = [x[1] for x in VARPAT.findall(src) if x[1] in tgt]
+            d = {}
+            oldnews = []
+            for name in names:
+                if name not in d:
+                    d[name] = f'<e{len(d)}>'
+                    oldnews.append((f'@{name}@', d[name]))
+            src = _replace(src, oldnews).strip()
+            gen = _reverse_replace(gen_fn(src), oldnews).strip()
+            return src, gen, tgt
+        else:
+            return src, gen_fn(src), tgt
+    return testing
+
+
+def transform_testing(pair, hparams):
+    if isinstance(pair, tuple):
+        src = multiese_da(pair[0])
+        tgt = multiese_da(pair[1])
+        return src, tgt
+    return pair, pair  # TODO: masking
 
 
 if __name__ == '__main__':

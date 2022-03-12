@@ -1,6 +1,7 @@
 import io
 import os
 import json
+import sys
 import numpy as np
 import csv
 import argparse
@@ -11,7 +12,7 @@ from logging import StreamHandler, FileHandler, Formatter
 
 import torch
 from torch.utils.data import Dataset
-from da_multiese import transform_multiese
+from da_multiese import transform_multiese, transform_testing
 from da_masking import get_transform_masking
 
 #from transformers import AutoTokenizer
@@ -65,6 +66,12 @@ def _loading_dataset(hparams):
     return dataset
 
 
+def transform_nop(pair, hparams):
+    if isinstance(pair, str):
+        return pair, pair
+    return pair
+
+
 class DADataset(Dataset):
     def __init__(self, hparams, dataset=None):
         self.hparams = hparams
@@ -84,8 +91,19 @@ class DADataset(Dataset):
         src, tgt = self.transform(self.dataset[index], self.hparams)
         return self.encode(src, tgt, self.hparams)
 
-    def clone(self, new_dataset):
-        return self.__class__(self.hparams, new_dataset)
+    def test_and_save(self, testing_fn, transform=None, file=sys.stdout):
+        encode_orig = self.encode
+        transform_orig = self.transform
+        if transform is not None:
+            self.transform = transform
+        self.encode = encode_string
+        try:
+            for src, tgt in self:
+                src, gen, tgt = testing_fn(src, tgt)
+                print(f'{src}\t{gen}\t{tgt}', file=file)
+        finally:
+            self.encode = encode_orig
+            self.transform = transform_orig
 
 
 class Subset(Dataset):
@@ -131,14 +149,16 @@ class KFoldDataset(Dataset):
         self.validset.indices = valid_index
         return self.trainset, self.validset
 
+    def test_and_save(self, gen_fn=lambda src, tgt: (src, tgt, None), file=sys.stdout):
+        if isinstance(self.allset, DADataset):
+            if isinstance(file, str):
+                with open(file, 'w') as f:
+                    self.allset.test_and_save(gen_fn, file=f)
+            else:
+                self.allset.test_and_save(gen_fn, file=file)
+
 
 # MULTITASKING_TRANSFORM
-
-
-def transform_nop(pair, hparams):
-    if isinstance(pair, str):
-        return pair, pair
-    return pair
 
 
 def encode_t5(src, tgt, hparams):
@@ -159,15 +179,6 @@ def encode_t5(src, tgt, hparams):
 
 def encode_string(src, tgt, hparams):
     return src, tgt
-
-
-# # extra_id
-# # denosing objective
-
-# EOS = 1
-# ID = 250099
-# EXTRA_ID = {
-# }
 
 
 def _setup_extra_id(hparams):
@@ -305,9 +316,7 @@ def _main():
     hparams = init_hparams(init_dict)
     print(hparams)
     dataset = KFoldDataset(DADataset(hparams))
-    train, valid = dataset.split()
-    for i in range(min(10, len(train))):
-        print(train[i])
+    dataset.test_and_save(gen_fn=lambda src, tgt: (src, tgt, None))
 
 
 if __name__ == '__main__':
