@@ -7,10 +7,10 @@ from pytorch_t import Seq2SeqTransformer, create_mask, save_model, load_pretrain
 import torch
 import torch.nn as nn
 
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, get_linear_schedule_with_warmup
 #tokenizer = AutoTokenizer.from_pretrained("sonoisa/t5-base-japanese")
 
-print(torch.__version__)
+# print(torch.__version__)
 
 
 # from morichan
@@ -39,7 +39,8 @@ def train(hparams, train_iter, model, loss_fn, optimizer):
     # 学習データ
     #collate_fn = string_collate(hparams)
     train_dataloader = DataLoader(
-        train_iter, batch_size=hparams.batch_size, collate_fn=collate_fn)
+        train_iter, batch_size=hparams.batch_size,
+        collate_fn=collate_fn, num_workers=hparams.num_workers)
 
     for src, tgt in train_dataloader:
         src = src.to(DEVICE)
@@ -72,7 +73,8 @@ def evaluate(hparams, val_iter, model, loss_fn):
 
     #collate_fn = string_collate(hparams)
     val_dataloader = DataLoader(
-        val_iter, batch_size=hparams.batch_size, collate_fn=collate_fn)
+        val_iter, batch_size=hparams.batch_size,
+        collate_fn=collate_fn, num_workers=hparams.num_workers)
 
     for src, tgt in val_dataloader:
         src = src.to(DEVICE)
@@ -114,8 +116,12 @@ setup = dict(
     # training
     max_epochs=50,
     num_workers=2,  # os.cpu_count(),
-    learning_rate=0.0001,
-    adam_epsilon=1e-9,
+    learning_rate=3e-4,
+    weight_decay=0.0,
+    adam_epsilon=1e-8,
+    # learning_rate=0.0001,
+    # adam_epsilon=1e-9,
+    # weight_decay=0
     # Transformer
     emb_size=512,  # BERT の次元に揃えれば良いよ
     nhead=8,
@@ -124,6 +130,42 @@ setup = dict(
     num_encoder_layers=3,
     num_decoder_layers=3,
 )
+
+
+def get_optimizer(hparams, model):
+    # オプティマイザの定義 (Adam)
+    optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr=hparams.learning_rate,
+        betas=(0.9, 0.98), eps=hparams.adam_epsilon
+    )
+    return optimizer
+
+
+def get_optimizer_adamw(hparams, model):
+    # オプティマイザの定義 (AdamW)
+    no_decay = ["bias", "LayerNorm.weight"]
+    optimizer_grouped_parameters = [
+        {
+            "params": [p for n, p in model.named_parameters()
+                       if not any(nd in n for nd in no_decay)],
+            "weight_decay": hparams.weight_decay,
+        },
+        {
+            "params": [p for n, p in model.named_parameters()
+                       if any(nd in n for nd in no_decay)],
+            "weight_decay": 0.0,
+        },
+    ]
+    optimizer = torch.optim.AdamW(optimizer_grouped_parameters,
+                                  lr=hparams.learning_rate,
+                                  eps=hparams.adam_epsilon)
+    # scheduler = get_linear_schedule_with_warmup(
+    #     optimizer,
+    #     num_warmup_steps=hparams.warmup_steps,
+    #     num_training_steps=t_total
+    # )
+    return optimizer
 
 
 def _main():
@@ -159,11 +201,7 @@ def _main():
     loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 
     # オプティマイザの定義 (Adam)
-    optimizer = torch.optim.Adam(
-        model.parameters(),
-        lr=hparams.learning_rate,
-        betas=(0.9, 0.98), eps=hparams.adam_epsilon
-    )
+    optimizer = get_optimizer_adamw(hparams, model)
 
     train_list = []
     valid_list = []
@@ -183,8 +221,6 @@ def _main():
     generate = load_nmt(f'transformer_model{hparams.suffix}.pt')
     def testing(src, tgt): return (src, generate(src), tgt)
     dataset.test_and_save(testing, file=f'result{hparams.suffix}.tsv')
-    # for ins, ous in dataset:
-    #     print(ins, ous, generate(ins))
 
 
 # greedy search を使って翻訳結果 (シーケンス) を生成

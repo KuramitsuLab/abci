@@ -12,6 +12,7 @@ from logging import StreamHandler, FileHandler, Formatter
 
 import torch
 from torch.utils.data import Dataset
+from tqdm import tqdm
 from da_multiese import transform_multiese, transform_testing
 from da_masking import get_transform_masking
 
@@ -98,7 +99,7 @@ class DADataset(Dataset):
             self.transform = transform
         self.encode = encode_string
         try:
-            for src, tgt in self:
+            for src, tgt in tqdm(self):
                 src, gen, tgt = testing_fn(src, tgt)
                 print(f'{src}\t{gen}\t{tgt}', file=file)
         finally:
