@@ -189,6 +189,7 @@ def encode_translate(text, code, choice=0.1, shuffle=0.5):
 
 MULTITASKING_TRANSFORM = {
     'translate': encode_translate,
+    'trans': encode_translate,
 }
 
 
