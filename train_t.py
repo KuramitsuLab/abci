@@ -239,11 +239,16 @@ setup = dict(
     max_seq_length=128,
     target_max_seq_length=128,
     # da
-    da_choice=0.1, da_shuffle=0.3,
+    da_choice=0.5, da_shuffle=0.3,
     # unsupervised training option
     mlm=False,
     masking_ratio=0.15,
     bert_style=False,
+    # training
+    max_epochs=50,
+    num_workers=2,  # os.cpu_count(),
+    learning_rate=0.0001,
+    adam_epsilon=1e-9,
     # Transformer
     emb_size=512,  # BERT の次元に揃えれば良いよ
     nhead=8,
@@ -285,16 +290,17 @@ def _main():
 
     # オプティマイザの定義 (Adam)
     optimizer = torch.optim.Adam(
-        model.parameters(), lr=0.0001, betas=(0.9, 0.98), eps=1e-9
+        model.parameters(),
+        lr=hparams.learning_rate,
+        betas=(0.9, 0.98), eps=hparams.adam_epsilon
     )
 
     NUM_EPOCHS = 2
 
-    # 描画用
     train_list = []
     valid_list = []
 
-    for epoch in range(1, NUM_EPOCHS+1):
+    for epoch in range(1, hparams.max_epochs+1):
         start_time = timer()
         train_iter, val_iter = dataset.split()
         train_loss = train(hparams, train_iter, model, loss_fn, optimizer)
