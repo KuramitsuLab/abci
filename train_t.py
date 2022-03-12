@@ -98,7 +98,7 @@ setup = dict(
     output_dir='./model',  # path to save the checkpoints
     model_name_or_path='',
     tokenizer_name_or_path='sonoisa/t5-base-japanese',
-    additional_tokens='<e0> <e1> <e2> <e3> <e4> <e5> <e6> <e7> <e8> <e9> encourage: translate: describe: option:',
+    additional_tokens='<e0> <e1> <e2> <e3> <e4> <e5> <e6> <e7> <e8> <e9>',
     seed=42,
     encoding='utf_8',
     column=0, target_column=1,

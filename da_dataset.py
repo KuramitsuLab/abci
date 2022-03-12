@@ -239,9 +239,6 @@ def init_hparams(init_dict, description='Trainer of mT5 on ABCI', Tokenizer=None
     if hparams.masking or hparams.target_column == -1:
         hparams.masking = True
         hparams.target_column = -1
-    #     hparams.transform = get_transform_masking(hparams)
-    # else:
-    #     hparams.transform = transform_multiese
 
     if hparams.additional_tokens == '':
         hparams.additional_special_tokens = None
@@ -257,7 +254,7 @@ def init_hparams(init_dict, description='Trainer of mT5 on ABCI', Tokenizer=None
         hparams.tokenizer = Tokenizer.from_pretrained(
             hparams.tokenizer_name_or_path, is_fast=hparams.use_fast_tokenizer)
         hparams.vocab_size = hparams.tokenizer.vocab_size
-        if not hparams.additional_tokens:
+        if hparams.additional_tokens:
             hparams.tokenizer.add_tokens(hparams.additional_tokens)
             hparams.vocab_size += len(hparams.additional_tokens)
         if hparams.masking:

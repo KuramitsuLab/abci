@@ -1,6 +1,7 @@
 
 import logging
 import hashlib
+from pyrsistent import v
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -29,6 +30,7 @@ class Seq2SeqTransformer(nn.Module):
                  dim_feedforward: int = 512,
                  dropout: float = 0.1):
         super(Seq2SeqTransformer, self).__init__()
+        # print('@vocab', src_vocab_size, tgt_vocab_size)
         encoder_layer = TransformerEncoderLayer(d_model=emb_size, nhead=nhead,
                                                 dim_feedforward=dim_feedforward)
         self.transformer_encoder = TransformerEncoder(
@@ -198,6 +200,8 @@ def load_pretrained(filepath, device):
     print(list(checkpoint.keys()))
     tokenizer = AutoTokenizer.from_pretrained(checkpoint['tokenizer'])
     tokenizer.add_tokens(checkpoint['additional_tokens'])
+    # for tok in checkpoint['additional_tokens']:
+    #     print(tok, tokenizer.vocab[tok], checkpoint['vocab_size'])
     model = Seq2SeqTransformer(
         checkpoint['num_encoder_layers'],
         checkpoint['num_decoder_layers'],
@@ -218,6 +222,8 @@ def load_nmt(filename='transformer-model.pt', device='cpu'):
     checkpoint = torch.load(filename, map_location=device)
     tokenizer = AutoTokenizer.from_pretrained(checkpoint['tokenizer'])
     tokenizer.add_tokens(checkpoint['additional_tokens'])
+    # for tok in checkpoint['additional_tokens']:
+    #     print(tok, tokenizer.vocab[tok], checkpoint['vocab_size'])
     model = Seq2SeqTransformer(
         checkpoint['num_encoder_layers'],
         checkpoint['num_decoder_layers'],
