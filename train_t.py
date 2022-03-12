@@ -265,7 +265,7 @@ def _main():
     print(hparams)
     dataset = KFoldDataset(DADataset(hparams))
 
-    vocab_size = hparams.tokenizer.vocab_size
+    vocab_size = hparams.vocab_size
     PAD_IDX = hparams.tokenizer.pad_token_id
     model = Seq2SeqTransformer(hparams.num_encoder_layers, hparams.num_decoder_layers,
                                hparams.emb_size, hparams.nhead, vocab_size, vocab_size,
@@ -309,10 +309,11 @@ def _main():
         val_loss = evaluate(hparams, val_iter, model, loss_fn)
         valid_list.append(val_loss)
         print(
-            (f"Epoch: {epoch}, Train loss: {train_loss:.3f}, Val loss: {val_loss:.3f}, "f"Epoch time = {(end_time - start_time):.3f}s"))
+            (f"Epoch: {epoch}, Train loss: {train_loss:.3f}, Val loss: {val_loss:.3f}, Epoch time = {(end_time - start_time):.3f}s"))
 
-    torch.save(model.state_dict(), 'transformer_model.pt')
-    print(generate(model, hparams.tokenizer, 'encourage: 難しいです'))
+    save_nmt(hparams, model, f'transformer_model{hparams.suffix}.pt')
+    generate = load_nmt(f'transformer_model{hparams.suffix}.pt')
+    print(generate('talk: 難しいです'))
     # model.load_state_dict(torch.load('transformer_model.pt'))
 
 
@@ -353,13 +354,51 @@ def generate(model, tokenizer, src_sentence: str):
     inputs = tokenizer(src_sentence, max_length=128, truncation=True,
                        return_tensors='pt')   # input のtensor
     src = inputs['input_ids'].view(-1, 1)
-    start_symbol = tokenizer.pad_token_id  # int(src[0])  # SOS_IDXの代わり
+    start_symbol = 5  # FIXME ''  # SOS_IDXの代わり
     end_idx = tokenizer.eos_token_id
     num_tokens = src.shape[0]
     src_mask = (torch.zeros(num_tokens, num_tokens)).type(torch.bool)
     tgt_tokens = _greedy_decode(
         model, src, src_mask, max_len=num_tokens + 5, beamsize=5, start_symbol=start_symbol, end_idx=end_idx)
     return tokenizer.decode(tgt_tokens.flatten())
+
+
+def save_nmt(hparams, model, file='transformer-model.pt'):
+    torch.save(dict(
+        tokenizer=hparams.tokenizer_name_or_path,
+        additional_tokens=hparams.additional_tokens,
+        num_encoder_layers=hparams.num_encoder_layers,
+        num_decoder_layers=hparams.num_decoder_layers,
+        emb_size=hparams.emb_size,
+        nhead=hparams.nhead,
+        vocab_size=hparams.vocab_size,
+        fnn_hid_dim=hparams.fnn_hid_dim,
+        model=model.state_dict(),
+    ), file)
+
+
+def load_nmt(filename='transformer-model.pt', map_location='cpu'):
+    if map_location is None:
+        checkpoint = torch.load(filename)
+    else:
+        checkpoint = torch.load(
+            filename, map_location=torch.device(map_location))
+    tokenizer = AutoTokenizer.from_pretrained(checkpoint['tokenizer'])
+    tokenizer.add_tokens(checkpoint['additional_tokens'])
+    model = Seq2SeqTransformer(
+        checkpoint['num_encoder_layers'],
+        checkpoint['num_decoder_layers'],
+        checkpoint['emb_size'],
+        checkpoint['nhead'],
+        checkpoint['vocab_size'],
+        checkpoint['vocab_size'],
+        checkpoint['fnn_hid_dim']
+    )
+    model.load_state_dict(checkpoint['model'])
+
+    def generate_greedy(s: str) -> str:
+        return generate(model, tokenizer, s)
+    return generate_greedy
 
 
 if __name__ == '__main__':
