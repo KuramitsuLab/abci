@@ -1,8 +1,4 @@
-import json
-import builtins
 import random
-import keyword
-import sys
 from tokenize import tokenize, TokenError, open, generate_tokens, COMMENT, ENCODING, NL
 from io import BytesIO
 

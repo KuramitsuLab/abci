@@ -5,7 +5,7 @@ from torch.optim import AdamW
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from transformers import (
-    MT5ForConditionalGeneration,
+    MT5ForConditionalGeneration, T5ForConditionalGeneration,
     AutoConfig, AutoModel, AutoTokenizer,
     get_linear_schedule_with_warmup
 )
@@ -25,8 +25,12 @@ class MT5FineTuner(pl.LightningModule):
         self.save_hyperparameters(hparams)
 
         # 事前学習済みモデルの読み込み
-        self.model = MT5ForConditionalGeneration.from_pretrained(
-            self.hparams.model_name_or_path)
+        if '/mt5' in self.hparams.model_name_or_path:
+            self.model = MT5ForConditionalGeneration.from_pretrained(
+                self.hparams.model_name_or_path)
+        else:
+            self.model = T5ForConditionalGeneration.from_pretrained(
+                self.hparams.model_name_or_path)
         # config = AutoConfig.from_pretrained(self.hparams.model_name_or_path)
         # self.model = AutoModel.from_config(config)
         self.tokenizer = self.hparams.tokenizer
@@ -75,10 +79,14 @@ class MT5FineTuner(pl.LightningModule):
     def validation_epoch_end(self, outputs):
         """バリデーション完了処理"""
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
-        self.log("val_loss", avg_loss, prog_bar=True)
+        self.log("val_loss", avg_loss, prog_bar=self.hparams.progress_bar)
         #logging.info(f'loss {avg_loss} PPL {math.exp(avg_loss)}')
         #print('@@', 'cross validation')
         self.dataset.split()
+        if self.hparams.save_checkpoint:
+            print(f'saving checkpoint model to {self.hparams.output_dir}')
+            self.tokenizer.save_pretrained(self.hparams.output_dir)
+            self.model.save_pretrained(self.hparams.output_dir)
 
     def test_step(self, batch, batch_idx):
         """テストステップ処理"""
@@ -175,12 +183,14 @@ def _main():
         batch_size=8,
         num_workers=2,  # os.cpu_count(),
         # train_batch_size=8,
+        save_checkpoint=False,
+        progress_bar=True,
         # eval_batch_size=8,
         max_epochs=50,
         limit_batches=-1,
         gradient_accumulation_steps=1,  # 16
-        n_gpu=1 if USE_GPU else 0,
-        early_stop_callback=False,
+        n_gpu=N_GPU if USE_GPU else 0,
+        early_stop_callback=True,
         # if you want to enable 16-bit training then install apex and set this to true
         fp_16=False,
         opt_level='O2',
@@ -205,6 +215,7 @@ def _main():
         callbacks=[EarlyStopping(monitor="val_loss")],
         # turn off automatic checkpointing
         enable_checkpointing=False,
+        enable_progress_bar=hparams.progress_bar,
         # run batch size scaling, result overrides hparams.batch_size
         auto_scale_batch_size="binsearch" if hparams.batch_size <= 2 else None,
         # run learning rate finder, results override hparams.learning_rate

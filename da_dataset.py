@@ -263,9 +263,9 @@ def init_hparams(init_dict, description='Trainer of mT5 on ABCI', Tokenizer=None
         hparams.encode = encode_t5
 
     if not hasattr(hparams, 'da_choice'):
-        hparams.da_choice = 0.1
+        hparams.da_choice = 0.5
     if not hasattr(hparams, 'da_shuffle'):
-        hparams.da_shuffle = 0.3
+        hparams.da_shuffle = 0.5
     _setup_logger(hparams)
     return hparams
 
@@ -314,7 +314,7 @@ def _main():
     hparams = init_hparams(init_dict)
     print(hparams)
     dataset = KFoldDataset(DADataset(hparams))
-    dataset.test_and_save(gen_fn=lambda src, tgt: (src, tgt, None))
+    dataset.test_and_save(gen_fn=lambda src, tgt: (src, tgt, ''))
 
 
 if __name__ == '__main__':
