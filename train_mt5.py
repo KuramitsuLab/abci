@@ -10,6 +10,7 @@ from transformers import (
     AutoConfig, AutoModel, AutoTokenizer,
     get_linear_schedule_with_warmup
 )
+import math
 import os
 import logging
 
@@ -64,7 +65,6 @@ class MT5FineTuner(pl.LightningModule):
         #       decoder_attention_mask.shape, labels.shape)
 
         # (torch.LongTensor of ) — Indices of input sequence tokens in the vocabulary.
-
         outputs = self(
             input_ids=batch["source_ids"],
             attention_mask=batch["source_mask"],
@@ -73,11 +73,37 @@ class MT5FineTuner(pl.LightningModule):
         )
         loss = outputs[0]
         return loss
+        # try:
+        #     outputs = self(
+        #         input_ids=batch["source_ids"],
+        #         attention_mask=batch["source_mask"],
+        #         decoder_attention_mask=batch['target_mask'],
+        #         labels=labels
+        #     )
+        #     loss = outputs[0]
+        #     return loss
+        # except IndexError as e:
+        #     print('IndexError', e)
+        #     print(batch["source_ids"].shape, batch["source_ids"].shape,
+        #           batch["source_ids"].shape, labels.shape)
+        #     vocab_size = self.model.config.vocab_size
+        #     print(vocab_size,
+        #           sum(batch["source_ids"][:, :] < vocab_size),
+        #           sum(batch["source_ids"][:, :] < vocab_size),
+        #           sum(batch["source_ids"][:, :] < vocab_size),
+        #           sum(labels[:, :] < vocab_size))
 
     def training_step(self, batch, batch_idx):
         """訓練ステップ処理"""
         loss = self._step(batch)
         return {"loss": loss}
+
+    def training_epoch_end(self, outputs):
+        # """訓練完了処理"""
+        loss = torch.stack([x["loss"] for x in outputs]).mean()
+        self.log("train_loss", loss, prog_bar=self.hparams.progress_bar)
+        if not self.hparams.progress_bar:
+            print(f'train_loss {loss} train_PPL {math.exp(loss)}')
 
     def validation_step(self, batch, batch_idx):
         """バリデーションステップ処理"""
@@ -88,9 +114,8 @@ class MT5FineTuner(pl.LightningModule):
         # """バリデーション完了処理"""
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
         self.log("val_loss", avg_loss, prog_bar=self.hparams.progress_bar)
-
-        #logging.info(f'loss {avg_loss} PPL {math.exp(avg_loss)}')
-        #print('@@', 'cross validation')
+        if not self.hparams.progress_bar:
+            print(f'val_loss {avg_loss} val_PPL {math.exp(avg_loss)}')
         self.dataset.split()
         if self.hparams.save_checkpoint:
             print(f'saving checkpoint model to {self.hparams.output_dir}')
@@ -193,7 +218,7 @@ def _main():
         num_workers=2,  # os.cpu_count(),
         # train_batch_size=8,
         save_checkpoint=False,
-        progress_bar=True,
+        progress_bar=False,
         # eval_batch_size=8,
         max_epochs=50,
         limit_batches=-1,
