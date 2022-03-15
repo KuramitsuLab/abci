@@ -110,10 +110,12 @@ class MT5FineTuner(pl.LightningModule):
 
     def training_epoch_end(self, outputs):
         # """訓練完了処理"""
+        # print(self.epoch_, outputs)
         loss = torch.stack([x["loss"] for x in outputs]).mean()
         self.log("train_loss", loss, prog_bar=self.hparams.progress_bar)
         if not self.hparams.progress_bar:
-            print(f'train_loss {loss} train_PPL {math.exp(loss)}')
+            print(
+                f'Epoch {self.epoch_} train_loss {loss} train_PPL {math.exp(loss)}')
 
     def validation_step(self, batch, batch_idx):
         """バリデーションステップ処理"""
@@ -122,10 +124,13 @@ class MT5FineTuner(pl.LightningModule):
 
     def validation_epoch_end(self, outputs):
         # """バリデーション完了処理"""
+        #print(self.epoch_, outputs)
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
         self.log("val_loss", avg_loss, prog_bar=self.hparams.progress_bar)
         if not self.hparams.progress_bar:
-            print(f'val_loss {avg_loss} val_PPL {math.exp(avg_loss)}')
+            print(
+                f'Epoch {self.epoch_} val_loss {avg_loss} val_PPL {math.exp(avg_loss)}')
+        self.epoch_ += 1
         self.dataset.split()
         if self.hparams.save_checkpoint:
             print(f'saving checkpoint model to {self.hparams.output_dir}')
@@ -271,7 +276,11 @@ def _main():
 
     model = MT5FineTuner(hparams)
     trainer = pl.Trainer(**train_params)
+    model.epoch_ = -100
     trainer.tune(model)
+    model.epoch_ = 1
+    print(
+        'Start training: max {hparams.max_epochs} epochs {model.f_total} steps')
     trainer.fit(model)
 
     # 最終エポックのモデルを保存
