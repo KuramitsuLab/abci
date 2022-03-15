@@ -299,13 +299,13 @@ def _main():
     model.save_pretrained(hparams.output_dir)
 
     if not hparams.masking:
-        DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        generate = load_nmt(model, tokenizer, device=DEVICE)
+        print('testing ... ', model.device)
+        generate = load_nmt(model, tokenizer)
         def testing(src, tgt): return (src, generate(src), tgt)
         dataset.test_and_save(testing, file=f'mt5_result{hparams.suffix}.tsv')
 
 
-def load_nmt(model, tokenizer, device):
+def load_nmt(model, tokenizer):
     def greedy_search(s: str, max_length=128) -> str:
         input_ids = tokenizer.encode_plus(
             s,
@@ -313,7 +313,7 @@ def load_nmt(model, tokenizer, device):
             max_length=max_length,
             padding="do_not_pad",
             truncation=True,
-            return_tensors='pt').input_ids.to(device)
+            return_tensors='pt').input_ids.to(model.device)
         greedy_output = model.generate(input_ids, max_length=max_length)
         return tokenizer.decode(greedy_output[0], skip_special_tokens=True)
     return greedy_search

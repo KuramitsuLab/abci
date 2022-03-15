@@ -1,7 +1,6 @@
 
 import logging
 import hashlib
-from pyrsistent import v
 import torch
 import torch.nn as nn
 from torch import Tensor
