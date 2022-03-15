@@ -1,3 +1,4 @@
+from sklearn.multiclass import OutputCodeClassifier
 import torch
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
@@ -49,11 +50,20 @@ class MT5FineTuner(pl.LightningModule):
 
     def _step(self, batch):
         """ロス計算"""
-        labels = batch["target_ids"]
+        # input_ids = batch["source_ids"]
+        # attention_mask = batch["source_mask"]
+        # decoder_attention_mask = batch['target_mask']
 
+        labels = batch["target_ids"]
         # All labels set to -100 are ignored (masked),
         # the loss is only computed for labels in [0, ..., config.vocab_size]
         labels[labels[:, :] == self.tokenizer.pad_token_id] = -100
+
+        # shape(batch_size, sequence_length)
+        # print(input_ids.shape, attention_mask.shape,
+        #       decoder_attention_mask.shape, labels.shape)
+
+        # (torch.LongTensor of ) — Indices of input sequence tokens in the vocabulary.
 
         outputs = self(
             input_ids=batch["source_ids"],
@@ -67,19 +77,18 @@ class MT5FineTuner(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         """訓練ステップ処理"""
         loss = self._step(batch)
-        #self.log("train_loss", loss)
         return {"loss": loss}
 
     def validation_step(self, batch, batch_idx):
         """バリデーションステップ処理"""
         loss = self._step(batch)
-        #self.log("val_loss", loss)
         return {"val_loss": loss}
 
     def validation_epoch_end(self, outputs):
-        """バリデーション完了処理"""
+        # """バリデーション完了処理"""
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
         self.log("val_loss", avg_loss, prog_bar=self.hparams.progress_bar)
+
         #logging.info(f'loss {avg_loss} PPL {math.exp(avg_loss)}')
         #print('@@', 'cross validation')
         self.dataset.split()
@@ -88,11 +97,11 @@ class MT5FineTuner(pl.LightningModule):
             self.tokenizer.save_pretrained(self.hparams.output_dir)
             self.model.save_pretrained(self.hparams.output_dir)
 
-    def test_step(self, batch, batch_idx):
-        """テストステップ処理"""
-        loss = self._step(batch)
-        self.log("test_loss", loss)
-        return {"test_loss": loss}
+    # def test_step(self, batch, batch_idx):
+    #     """テストステップ処理"""
+    #     loss = self._step(batch)
+    #     self.log("test_loss", loss)
+    #     return {"test_loss": loss}
 
     # def test_epoch_end(self, outputs):
     #     """テスト完了処理"""
@@ -189,7 +198,7 @@ def _main():
         max_epochs=50,
         limit_batches=-1,
         gradient_accumulation_steps=1,  # 16
-        n_gpu=N_GPU if USE_GPU else 0,
+        n_gpu=1 if USE_GPU else 0,
         early_stop_callback=True,
         # if you want to enable 16-bit training then install apex and set this to true
         fp_16=False,
@@ -233,11 +242,6 @@ def _main():
     # 最終エポックのモデルを保存
     tokenizer = model.tokenizer
     model = model.model
-    # if hparams.quantize:
-    #     logging.info('Enabled quantization model')
-    #     model = torch.quantization.quantize_dynamic(
-    #         model, {torch.nn.Linear}, dtype=torch.qint8
-    #     )
     tokenizer.save_pretrained(hparams.output_dir)
     model.save_pretrained(hparams.output_dir)
 
