@@ -17,7 +17,7 @@ module load cuda/9.2/9.2.88.1
 #!/bin/bash -e
 pip3 install --user --upgrade pip
 pip3 install -r requirements.txt
-python3 main_conala.py conala_mined.tsv
+python3 train_mt5.py --masking ../../corpus/mask_Kaggle.txt
 
 #!/bin/bash
 # ./a.out
