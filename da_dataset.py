@@ -251,6 +251,7 @@ def init_hparams(init_dict, description='Trainer of mT5 on ABCI', Tokenizer=None
         hparams.suffix = ''
     else:
         hparams.suffix = f'_{hparams.name}'
+        hparams.output_dir = f'{hparams.output_dir}{hparams.suffix}'
 
     _set_seed(hparams.seed)
 
