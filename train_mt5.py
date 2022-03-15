@@ -279,8 +279,7 @@ def _main():
     model.epoch_ = -100
     trainer.tune(model)
     model.epoch_ = 0
-    print(
-        f'Start training: max {hparams.max_epochs} epochs {model.f_total} steps')
+    print(f'Start training: max {hparams.max_epochs} epochs')
     trainer.fit(model)
 
     # 最終エポックのモデルを保存
