@@ -25,16 +25,27 @@ class MT5FineTuner(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters(hparams)
 
+        print(self.hparams.tokenizer.vocab_size, self.hparams.vocab_size)
+
         # 事前学習済みモデルの読み込み
+        config = AutoConfig.from_pretrained(
+            self.hparams.model_name_or_path)
+        config.vocab_size = max(config.vocab_size,
+                                self.hparams.tokenizer.vocab_size,
+                                self.hparams.vocab_size)
         if '/mt5' in self.hparams.model_name_or_path:
-            self.model = MT5ForConditionalGeneration.from_pretrained(
-                self.hparams.model_name_or_path)
+            self.model = MT5ForConditionalGeneration(config)
+            # self.model = MT5ForConditionalGeneration.from_pretrained(
+            #     self.hparams.model_name_or_path)
         else:
-            self.model = T5ForConditionalGeneration.from_pretrained(
-                self.hparams.model_name_or_path)
+            self.model = MT5ForConditionalGeneration(config)
+            # self.model = T5ForConditionalGeneration.from_pretrained(
+            #     self.hparams.model_name_or_path)
         # config = AutoConfig.from_pretrained(self.hparams.model_name_or_path)
         # self.model = AutoModel.from_config(config)
         self.tokenizer = self.hparams.tokenizer
+        print(self.model.config)
+        print(self.model.config.vocab_size, self.hparams.vocab_size)
         self.train_dataset = None
 
     def forward(self, input_ids, attention_mask=None, decoder_input_ids=None,
