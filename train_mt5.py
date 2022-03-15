@@ -219,7 +219,7 @@ def _main():
         max_seq_length=128,
         target_max_seq_length=128,
         # da
-        da_choice=0.1, da_shuffle=0.3,
+        da_choice=0.5, da_shuffle=0.4, bos_token='',
         # unsupervised training option
         masking=False,
         masking_ratio=0.35,

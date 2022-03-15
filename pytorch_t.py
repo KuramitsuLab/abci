@@ -159,18 +159,17 @@ def _greedy_decode(model, src, src_mask, device, max_len, beamsize, start_symbol
 # 翻訳
 
 
-def _generate(model, tokenizer, device, src_sentence: str):
+def _generate(model, tokenizer, device, bos_token_id: int, src_sentence: str):
     inputs = tokenizer(src_sentence, max_length=128, truncation=True,
                        return_tensors='pt')   # input のtensor
     src = inputs['input_ids'].view(-1, 1)
-    start_symbol = 5  # FIXME ''  # SOS_IDXの代わり
     end_idx = tokenizer.eos_token_id
     num_tokens = src.shape[0]
     src_mask = (torch.zeros(num_tokens, num_tokens)).type(torch.bool)
     tgt_tokens = _greedy_decode(
         model, src, src_mask, device,
         max_len=num_tokens + 5, beamsize=5,
-        start_symbol=start_symbol, end_idx=end_idx)
+        start_symbol=bos_token_id, end_idx=end_idx)
     return tokenizer.decode(tgt_tokens.flatten())
 
 
@@ -180,9 +179,14 @@ def md5(filename):
 
 
 def save_model(hparams, model, file='transformer-model.pt'):
+    if len(hparams.bos_token) > 0:
+        bos_token_id = int(hparams.tokenizer.encode(hparams.bos_token)[0])
+    else:
+        bos_token_id = 0
     torch.save(dict(
         tokenizer=hparams.tokenizer_name_or_path,
         additional_tokens=hparams.additional_tokens,
+        bos_token_id=bos_token_id,
         num_encoder_layers=hparams.num_encoder_layers,
         num_decoder_layers=hparams.num_decoder_layers,
         emb_size=hparams.emb_size,
@@ -235,7 +239,8 @@ def load_nmt(filename='transformer-model.pt', device='cpu'):
     )
     model.load_state_dict(checkpoint['model'])
     model.eval()
+    bos_token_id = checkpoint['bos_token_id']
 
     def generate_greedy(s: str) -> str:
-        return _generate(model, tokenizer, device, s)
+        return _generate(model, tokenizer, device, bos_token_id, s)
     return generate_greedy

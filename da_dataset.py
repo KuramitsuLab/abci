@@ -13,11 +13,8 @@ from logging import StreamHandler, FileHandler, Formatter
 import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
-from da_multiese import transform_multiese, transform_testing
+from da_multiese import transform_multitask
 from da_masking import get_transform_masking
-
-#from transformers import AutoTokenizer
-#tokenizer = AutoTokenizer.from_pretrained("sonoisa/t5-base-japanese")
 
 
 def _loading_dataset(hparams):
@@ -90,7 +87,7 @@ class DADataset(Dataset):
         if hparams.masking:
             self.transform = get_transform_masking(hparams)
         else:
-            self.transform = transform_multiese
+            self.transform = transform_multitask
         self.encode = hparams.encode
 
     def __len__(self):
@@ -282,11 +279,10 @@ def init_hparams(init_dict, description='Trainer of mT5 on ABCI', Tokenizer=None
         if hparams.masking:
             _setup_extra_id(hparams)
         hparams.encode = encode_t5
-
-    if not hasattr(hparams, 'da_choice'):
-        hparams.da_choice = 0.5
-    if not hasattr(hparams, 'da_shuffle'):
-        hparams.da_shuffle = 0.5
+    # if not hasattr(hparams, 'da_choice'):
+    #     hparams.da_choice = 0.5
+    # if not hasattr(hparams, 'da_shuffle'):
+    #     hparams.da_shuffle = 0.5
     _setup_logger(hparams)
     return hparams
 
@@ -326,7 +322,7 @@ def _main():
         max_seq_length=128,
         target_max_seq_length=128,
         # da
-        da_choice=0.1, da_shuffle=0.3,
+        da_choice=0.5, da_shuffle=0.3, bos_token='',
         # unsupervised training option
         masking=False,
         masking_ratio=0.35,

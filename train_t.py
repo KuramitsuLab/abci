@@ -99,16 +99,16 @@ def evaluate(hparams, val_iter, model, loss_fn):
 setup = dict(
     output_dir='./model',  # path to save the checkpoints
     model_name_or_path='',
-    tokenizer_name_or_path='sonoisa/t5-base-japanese',
-    additional_tokens='<e0> <e1> <e2> <e3> <e4> <e5> <e6> <e7> <e8> <e9>',
+    tokenizer_name_or_path='google/mt5-small',
+    additional_tokens='<e0> <e1> <e2> <e3> <e4> <e5> <e6> <e7> <e8> <e9> <s>',
     seed=42,
     encoding='utf_8',
     column=0, target_column=1,
     kfold=5,  # cross validation
-    max_seq_length=128,
-    target_max_seq_length=128,
+    max_seq_length=80,
+    target_max_seq_length=80,
     # da
-    da_choice=0.5, da_shuffle=0.3,
+    da_choice=0.5, da_shuffle=0.4, bos_token='<s>',
     # unsupervised training option
     masking=False,
     masking_ratio=0.35,
@@ -217,10 +217,11 @@ def _main():
         print(
             (f"Epoch: {epoch}, Train loss: {train_loss:.3f}, Val loss: {val_loss:.3f}, Epoch time = {(end_time - start_time):.3f}s"))
 
-    save_model(hparams, model, f'transformer_model{hparams.suffix}.pt')
-    generate = load_nmt(f'transformer_model{hparams.suffix}.pt')
-    def testing(src, tgt): return (src, generate(src), tgt)
-    dataset.test_and_save(testing, file=f'result{hparams.suffix}.tsv')
+    save_model(hparams, model, f't_model{hparams.suffix}.pt')
+    if not hparams.masking:
+        generate = load_nmt(f't_model{hparams.suffix}.pt', device=DEVICE)
+        def testing(src, tgt): return (src, generate(src), tgt)
+        dataset.test_and_save(testing, file=f't_result{hparams.suffix}.tsv')
 
 
 # greedy search を使って翻訳結果 (シーケンス) を生成

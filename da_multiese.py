@@ -151,7 +151,7 @@ def _traverse_tree(tree, c):
     return Text('')
 
 
-def multiese_da(s, choice=0.1, shuffle=0.5):
+def multiese_da(s, choice=0.5, shuffle=0.5):
     if '|' in s:
         tree = parse_as_tree(s)
         c = ParsedResult()
@@ -179,8 +179,11 @@ def _reverse_replace(doc, oldnews):
     return doc.replace('</s>', '')
 
 
-def encode_translate(text, code, choice=0.5, shuffle=0.3):
-    text = multiese_da(text, choice=choice, shuffle=shuffle) + ' '
+def transform_translate(pair, hparams):
+    text, code = pair
+    text = multiese_da(text,
+                       choice=hparams.da_choice,
+                       shuffle=hparams.da_shuffle) + ' '
     names = [x[1] for x in VARPAT.findall(text) if x[1] in code]
     d = {}
     oldnews = []
@@ -193,24 +196,54 @@ def encode_translate(text, code, choice=0.5, shuffle=0.3):
     return text, code
 
 
-MULTITASKING_TRANSFORM = {
-    'translate': encode_translate,
-    'trans': encode_translate,
+def transform_multiese(pair, hparams):
+    src, tgt = pair
+    src = multiese_da(src,
+                      choice=hparams.da_choice,
+                      shuffle=hparams.da_shuffle)
+    tgt = multiese_da(tgt,
+                      choice=hparams.da_choice,
+                      shuffle=hparams.da_shuffle)
+    return src, tgt
+
+
+def transform_masking(pair, hparams):
+    src, tgt = pair
+    tokenizer = hparams.tokenizer
+    inputs = tokenizer.encode(src, add_special_tokens=False)
+    ratio = hparams.masking_ratio if hasattr(
+        hparams, 'masking_ratio') else 0.3
+    src = []
+    prev = None
+    c = 0
+    for id in inputs:
+        if random.random() < ratio:
+            if prev is not src:
+                src.append(f'<extra_id_{c}>')
+                prev = src
+                c += 1
+        else:
+            src.append(f'{tokenizer.decode([id])}')
+            prev = None
+    return ''.join(src), tgt
+
+
+TRANSFORMS = {
+    '*': transform_multiese,
+    'translate': transform_translate,
+    'trans': transform_translate,
+    'mask': transform_masking,
 }
 
 
-def transform_multiese(pair, hparams):
-    src, tgt = pair
-    prefix, _, body = src.partition(':')
-    if prefix in MULTITASKING_TRANSFORM:
-        src, tgt = MULTITASKING_TRANSFORM[prefix](
-            src, tgt, choice=hparams.da_choice, shuffle=hparams.da_shuffle)
-        return src, tgt
-    src = multiese_da(src, choice=hparams.da_choice,
-                      shuffle=hparams.da_shuffle)
-    tgt = multiese_da(tgt, choice=hparams.da_choice,
-                      shuffle=hparams.da_shuffle)
-    return src, tgt
+def transform_multitask(pair, hparams):
+    if pair[0] is pair[1]:
+        src, tgt = transform_masking(pair, hparams)
+    else:
+        prefix, _, _ = pair[0].partition(':')
+        transform_fn = TRANSFORMS.get(prefix, transform_multiese)
+        src, tgt = transform_fn(pair, hparams)
+    return src, hparams.bos_token+tgt
 
 
 def compose_testing(gen_fn, trans_prefix='trans'):
