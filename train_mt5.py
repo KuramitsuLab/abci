@@ -4,6 +4,7 @@ from torch.optim import AdamW
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from pytorch_lightning.callbacks import ModelSummary
 from transformers import (
     MT5ForConditionalGeneration, T5ForConditionalGeneration,
     AutoConfig, AutoModel, AutoTokenizer,
@@ -172,7 +173,11 @@ class MT5FineTuner(pl.LightningModule):
             num_warmup_steps=self.hparams.warmup_steps,
             num_training_steps=self.t_total
         )
-        return [optimizer], [{"scheduler": scheduler, "interval": "step", "frequency": 1}]
+        return [optimizer], [{
+            "scheduler": scheduler,
+            "interval": "step",
+            "frequency": 1
+        }]
 
     def get_dataset(self):
         """データセットを作成する"""
@@ -252,6 +257,7 @@ def _main():
     logging.info(f'Base model: {hparams.model_name_or_path} {hparams.files}')
 
     train_params = dict(
+        enable_model_summary=True,
         accumulate_grad_batches=hparams.gradient_accumulation_steps,
         gpus=hparams.n_gpu,
         max_epochs=hparams.max_epochs,
@@ -261,7 +267,10 @@ def _main():
         gradient_clip_val=hparams.max_grad_norm,
         #    checkpoint_callback=checkpoint_callback,
         # callbacks=[LoggingCallback()],
-        callbacks=[EarlyStopping(monitor="val_loss")],
+        callbacks=[
+            EarlyStopping(monitor="val_loss"),
+            ModelSummary(max_depth=-1)
+        ],
         # turn off automatic checkpointing
         enable_checkpointing=False,
         enable_progress_bar=hparams.progress_bar,
