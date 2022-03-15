@@ -283,10 +283,31 @@ def _main():
     trainer.fit(model)
 
     # 最終エポックのモデルを保存
+    dataset = model.dataset
     tokenizer = model.tokenizer
     model = model.model
     tokenizer.save_pretrained(hparams.output_dir)
     model.save_pretrained(hparams.output_dir)
+
+    if not hparams.masking:
+        DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        generate = load_nmt(model, tokenizer, device=DEVICE)
+        def testing(src, tgt): return (src, generate(src), tgt)
+        dataset.test_and_save(testing, file=f'mt5_result{hparams.suffix}.tsv')
+
+
+def load_nmt(model, tokenizer, device):
+    def greedy_search(s: str, max_length=128) -> str:
+        input_ids = tokenizer.encode_plus(
+            s,
+            add_special_tokens=True,
+            max_length=max_length,
+            padding="do_not_pad",
+            truncation=True,
+            return_tensors='pt').input_ids.to(device)
+        greedy_output = model.generate(input_ids, max_length=max_length)
+        return tokenizer.decode(greedy_output[0], skip_special_tokens=True)
+    return greedy_search
 
 
 if __name__ == '__main__':

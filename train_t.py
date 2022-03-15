@@ -126,9 +126,9 @@ setup = dict(
     emb_size=512,  # BERT の次元に揃えれば良いよ
     nhead=8,
     fnn_hid_dim=512,  # 変える
-    batch_size=64,
-    num_encoder_layers=3,
-    num_decoder_layers=3,
+    batch_size=32,
+    num_encoder_layers=6,
+    num_decoder_layers=6,
 )
 
 
