@@ -278,7 +278,7 @@ def _main():
     trainer = pl.Trainer(**train_params)
     model.epoch_ = -100
     trainer.tune(model)
-    model.epoch_ = 1
+    model.epoch_ = 0
     print(
         'Start training: max {hparams.max_epochs} epochs {model.f_total} steps')
     trainer.fit(model)
