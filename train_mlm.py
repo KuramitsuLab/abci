@@ -246,10 +246,10 @@ def _main():
         gradient_clip_val=hparams.max_grad_norm,
         #    checkpoint_callback=checkpoint_callback,
         # callbacks=[LoggingCallback()],
-        callbacks=[
-            EarlyStopping(monitor="val_loss"),
-            ModelSummary(max_depth=-1)
-        ],
+        # callbacks=[
+        #     EarlyStopping(monitor="val_loss"),
+        #     ModelSummary(max_depth=-1)
+        # ],
         # turn off automatic checkpointing
         enable_checkpointing=False,
         enable_progress_bar=hparams.progress_bar,
