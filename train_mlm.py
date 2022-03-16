@@ -48,6 +48,7 @@ class MT5FineTuner(pl.LightningModule):
         print(self.model.config)
         print(self.model.config.vocab_size, self.hparams.vocab_size)
         self.train_dataset = None
+        self.nsteps_ = -100
 
     def forward(self, input_ids, attention_mask=None, decoder_input_ids=None,
                 decoder_attention_mask=None, labels=None):
@@ -78,7 +79,7 @@ class MT5FineTuner(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         """訓練ステップ処理"""
         loss = self._step(batch)
-        self.steps_ += 1
+        self.nsteps_ += 1
         return {"loss": loss}
 
     def training_epoch_end(self, outputs):
@@ -89,7 +90,7 @@ class MT5FineTuner(pl.LightningModule):
         self.epoch_ += 1
         if not self.hparams.progress_bar:
             print(
-                f'Epoch {self.epoch_} steps {self.steps_} train_loss {loss} train_PPL {math.exp(loss)}')
+                f'Epoch {self.epoch_} steps {self.nsteps_} train_loss {loss} train_PPL {math.exp(loss)}')
         if self.hparams.save_checkpoint:
             print(f'saving checkpoint model to {self.hparams.output_dir}')
             self.tokenizer.save_pretrained(self.hparams.output_dir)
@@ -264,10 +265,10 @@ def _main():
     model = MT5FineTuner(hparams)
     trainer = pl.Trainer(**train_params)
     model.epoch_ = -100
-    model.steps_ = -100
+    model.nsteps_ = -100
     trainer.tune(model)
     model.epoch_ = 0
-    model.steps_ = 0
+    model.nsteps_ = 0
     print(f'Start training: max {hparams.max_epochs} epochs')
     trainer.fit(model)
 
