@@ -264,6 +264,7 @@ def _main():
     model = MT5FineTuner(hparams)
     trainer = pl.Trainer(**train_params)
     model.epoch_ = -100
+    model.steps_ = -100
     trainer.tune(model)
     model.epoch_ = 0
     model.steps_ = 0
