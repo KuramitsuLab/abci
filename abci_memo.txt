@@ -1,0 +1,28 @@
+# ノードへのログイン
+qrsh -g gcc50582 -l rt_G.small=1 -l h_rt=01:00:00
+
+# スクリプトの実行
+qsub -g gcc50582 -l rt_G.small=1 sample.sh
+
+# ジョブを確認する
+qstat
+
+# ジョブを確認する
+qdel
+
+
+#ノードの種類
+rt_AG.small
+
+# ファイルのアップロード
+scp -P 10022 data.zip acc12952oa@localhost:data.zip
+
+# ファイルのダウンロード
+scp -P 10022 acc12952oa@localhost:abci/result.tsv ./
+
+#モジュール
+module load gcc/9.3.0 python/3.8 cuda/11.2 cudnn/8.1
+
+##Python のバーチャル環境
+python3 -m venv work 
+source work/bin/activate
