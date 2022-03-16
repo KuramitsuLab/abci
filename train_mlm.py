@@ -62,20 +62,10 @@ class MT5FineTuner(pl.LightningModule):
 
     def _step(self, batch):
         """ロス計算"""
-        # input_ids = batch["source_ids"]
-        # attention_mask = batch["source_mask"]
-        # decoder_attention_mask = batch['target_mask']
-
         labels = batch["target_ids"]
         # All labels set to -100 are ignored (masked),
         # the loss is only computed for labels in [0, ..., config.vocab_size]
         labels[labels[:, :] == self.tokenizer.pad_token_id] = -100
-
-        # shape(batch_size, sequence_length)
-        # print(input_ids.shape, attention_mask.shape,
-        #       decoder_attention_mask.shape, labels.shape)
-
-        # (torch.LongTensor of ) — Indices of input sequence tokens in the vocabulary.
         outputs = self(
             input_ids=batch["source_ids"],
             attention_mask=batch["source_mask"],
@@ -192,11 +182,11 @@ class MT5FineTuner(pl.LightningModule):
                           drop_last=True, shuffle=True,
                           num_workers=self.hparams.num_workers)
 
-    def val_dataloader(self):
-        """バリデーションデータローダーを作成する"""
-        return DataLoader(self.valid_dataset,
-                          batch_size=self.hparams.batch_size,
-                          num_workers=self.hparams.num_workers)
+    # def val_dataloader(self):
+    #     """バリデーションデータローダーを作成する"""
+    #     return DataLoader(self.valid_dataset,
+    #                       batch_size=self.hparams.batch_size,
+    #                       num_workers=self.hparams.num_workers)
 
 
 def _main():
