@@ -14,11 +14,11 @@ module load gcc/9.3.0 python/3.8 cuda/11.2 cudnn/8.1
 export LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib:/apps/centos7/python/3.8.7/lib
 
 python3 train_mt5.py\
-    --name='mt5_35'\
-    --masking --masking_ratio=0.35\
-    --max_epochs=5\
-    --model_name_or_path='google/mt5-small'\
-    --tokenizer_name_or_path='google/mt5-small'\
+    --name='mg_40'\
+    --masking --masking_ratio=0.40\
+    --max_epochs=3\
+    --model_name_or_path='megagonlabs/t5-base-japanese-web'\
+    --tokenizer_name_or_path='megagonlabs/t5-base-japanese-web'\
     --additional_tokens=''\
     --save_checkpoint\
     --num_workers=4\
