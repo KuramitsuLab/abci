@@ -220,6 +220,7 @@ def _main():
 
     save_model(hparams, model, f't_model{hparams.suffix}.pt')
     if not hparams.masking:
+        print('testing', DEVICE)
         generate = load_nmt(f't_model{hparams.suffix}.pt', device=DEVICE)
         def testing(src, tgt): return (src, generate(src), tgt)
         dataset.test_and_save(testing, file=f't_result{hparams.suffix}.tsv')
