@@ -52,12 +52,13 @@ def _loading_dataset(hparams):
                             src = row[column]
                             tgt = row[target_column]
                             dataset.append((src, tgt))
-                            if src.count('{') > 0:
-                                dataset.append((src, tgt))
-                            if src.count('|') > 4:
-                                dataset.append((src, tgt))
-                            if src.count('[') > 3:
-                                dataset.append((src, tgt))
+                            if hparams.data_duplication == True:
+                                if src.count('{') > 0:
+                                    dataset.append((src, tgt))
+                                if src.count('|') > 5:
+                                    dataset.append((src, tgt))
+                                if src.count('[') > 3:
+                                    dataset.append((src, tgt))
             elif file.endswith('.jsonl'):
                 with io.open(file, encoding=hparams.encoding) as f:
                     for line in f.readlines():
@@ -279,6 +280,7 @@ def init_hparams(init_dict, description='Trainer of mT5 on ABCI', Tokenizer=None
         if hparams.masking:
             _setup_extra_id(hparams)
         hparams.encode = encode_t5
+    hparams.data_duplication = True
     # if not hasattr(hparams, 'da_choice'):
     #     hparams.da_choice = 0.5
     # if not hasattr(hparams, 'da_shuffle'):

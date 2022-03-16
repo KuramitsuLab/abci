@@ -181,14 +181,13 @@ def _main():
         model = load_pretrained(hparams.model_name_or_path, DEVICE)
     else:
         model = Seq2SeqTransformer(hparams.num_encoder_layers, hparams.num_decoder_layers,
-                                   hparams.emb_size, hparams.nhead, 
+                                   hparams.emb_size, hparams.nhead,
                                    vocab_size, vocab_size, hparams.fnn_hid_dim)
 
     # TODO: ?
     for p in model.parameters():
         if p.dim() > 1:
             nn.init.xavier_uniform_(p)
-
     params = 0
     for p in model.parameters():
         if p.requires_grad:
@@ -220,8 +219,9 @@ def _main():
 
     save_model(hparams, model, f't_model{hparams.suffix}.pt')
     if not hparams.masking:
-        print('testing', DEVICE)
-        generate = load_nmt(f't_model{hparams.suffix}.pt', device=DEVICE)
+        hparams.data_duplication = False
+        dataset = KFoldDataset(DADataset(hparams))
+        generate = load_nmt(f't_model{hparams.suffix}.pt')
         def testing(src, tgt): return (src, generate(src), tgt)
         dataset.test_and_save(testing, file=f't_result{hparams.suffix}.tsv')
 
