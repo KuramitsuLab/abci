@@ -105,9 +105,14 @@ class DADataset(Dataset):
             self.transform = transform
         self.encode = encode_string
         try:
-            for src, tgt in tqdm(self):
-                src, gen, tgt = testing_fn(src, tgt)
-                print(f'{src}\t{gen}\t{tgt}', file=file)
+            if self.hparams.progress_bar:
+                for src, tgt in tqdm(self):
+                    src, gen, tgt = testing_fn(src, tgt)
+                    print(f'{src}\t{gen}\t{tgt}', file=file)
+            else:
+                for src, tgt in self:
+                    src, gen, tgt = testing_fn(src, tgt)
+                    print(f'{src}\t{gen}\t{tgt}', file=file)
         finally:
             self.encode = encode_orig
             self.transform = transform_orig

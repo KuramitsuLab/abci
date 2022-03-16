@@ -219,6 +219,7 @@ def _main():
 
     save_model(hparams, model, f't_model{hparams.suffix}.pt')
     if not hparams.masking:
+        print('Testing', DEVICE)
         hparams.data_duplication = False
         dataset = KFoldDataset(DADataset(hparams))
         generate = load_nmt(f't_model{hparams.suffix}.pt')
