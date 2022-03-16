@@ -99,7 +99,8 @@ def evaluate(hparams, val_iter, model, loss_fn):
 setup = dict(
     output_dir='./model',  # path to save the checkpoints
     model_name_or_path='',
-    tokenizer_name_or_path='google/mt5-small',
+    tokenizer_name_or_path='megagonlabs/t5-base-japanese-web',
+    # tokenizer_name_or_path='google/mt5-small',
     additional_tokens='<e0> <e1> <e2> <e3> <e4> <e5> <e6> <e7> <e8> <e9> <s>',
     seed=42,
     encoding='utf_8',
@@ -171,7 +172,7 @@ def get_optimizer_adamw(hparams, model):
 def _main():
     global PAD_IDX
     hparams = init_hparams(setup, Tokenizer=AutoTokenizer)
-    print(hparams)
+    # print(hparams)
     dataset = KFoldDataset(DADataset(hparams))
 
     vocab_size = hparams.vocab_size
@@ -180,8 +181,8 @@ def _main():
         model = load_pretrained(hparams.model_name_or_path, DEVICE)
     else:
         model = Seq2SeqTransformer(hparams.num_encoder_layers, hparams.num_decoder_layers,
-                                   hparams.emb_size, hparams.nhead, vocab_size, vocab_size,
-                                   hparams.fnn_hid_dim)
+                                   hparams.emb_size, hparams.nhead, 
+                                   vocab_size, vocab_size, hparams.fnn_hid_dim)
 
     # TODO: ?
     for p in model.parameters():

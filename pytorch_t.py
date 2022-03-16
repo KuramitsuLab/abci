@@ -161,7 +161,7 @@ def _greedy_decode(model, src, src_mask, device, max_len, beamsize, start_symbol
 def _generate(model, tokenizer, device, bos_token_id: int, src_sentence: str):
     inputs = tokenizer(src_sentence, max_length=128, truncation=True,
                        return_tensors='pt')   # input のtensor
-    src = inputs['input_ids'].view(-1, 1)
+    src = inputs['input_ids'].view(-1, 1).to(device)
     end_idx = tokenizer.eos_token_id
     num_tokens = src.shape[0]
     src_mask = (torch.zeros(num_tokens, num_tokens)).type(torch.bool)
@@ -221,7 +221,8 @@ def load_pretrained(filepath, device):
 
 def load_nmt(filename='transformer-model.pt', device='cpu'):
     logging.info(f'md5: {filename} {md5(filename)}')
-    device = torch.device(device)
+    if isinstance(device, str):
+        device = torch.device(device)
     checkpoint = torch.load(filename, map_location=device)
     tokenizer = AutoTokenizer.from_pretrained(checkpoint['tokenizer'])
     tokenizer.add_tokens(checkpoint['additional_tokens'])
