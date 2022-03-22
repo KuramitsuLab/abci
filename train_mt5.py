@@ -1,3 +1,6 @@
+import math
+import logging
+import os
 import torch
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
@@ -10,9 +13,6 @@ from transformers import (
     AutoConfig, AutoModel, AutoTokenizer,
     get_linear_schedule_with_warmup
 )
-import math
-import os
-import logging
 
 from da_dataset import init_hparams, DADataset, KFoldDataset
 
@@ -34,6 +34,8 @@ class MT5FineTuner(pl.LightningModule):
         config.vocab_size = max(config.vocab_size,
                                 self.hparams.tokenizer.vocab_size,
                                 self.hparams.vocab_size)
+        self.nsteps_ = 0
+        self.nepochs_ = 0
         if '/mt5' in self.hparams.model_name_or_path:
             self.model = MT5ForConditionalGeneration(config)
             # self.model = MT5ForConditionalGeneration.from_pretrained(
@@ -65,15 +67,10 @@ class MT5FineTuner(pl.LightningModule):
         # input_ids = batch["source_ids"]
         # attention_mask = batch["source_mask"]
         # decoder_attention_mask = batch['target_mask']
-
         labels = batch["target_ids"]
         # All labels set to -100 are ignored (masked),
         # the loss is only computed for labels in [0, ..., config.vocab_size]
         labels[labels[:, :] == self.tokenizer.pad_token_id] = -100
-
-        # shape(batch_size, sequence_length)
-        # print(input_ids.shape, attention_mask.shape,
-        #       decoder_attention_mask.shape, labels.shape)
 
         # (torch.LongTensor of ) — Indices of input sequence tokens in the vocabulary.
         outputs = self(
@@ -84,29 +81,11 @@ class MT5FineTuner(pl.LightningModule):
         )
         loss = outputs[0]
         return loss
-        # try:
-        #     outputs = self(
-        #         input_ids=batch["source_ids"],
-        #         attention_mask=batch["source_mask"],
-        #         decoder_attention_mask=batch['target_mask'],
-        #         labels=labels
-        #     )
-        #     loss = outputs[0]
-        #     return loss
-        # except IndexError as e:
-        #     print('IndexError', e)
-        #     print(batch["source_ids"].shape, batch["source_ids"].shape,
-        #           batch["source_ids"].shape, labels.shape)
-        #     vocab_size = self.model.config.vocab_size
-        #     print(vocab_size,
-        #           sum(batch["source_ids"][:, :] < vocab_size),
-        #           sum(batch["source_ids"][:, :] < vocab_size),
-        #           sum(batch["source_ids"][:, :] < vocab_size),
-        #           sum(labels[:, :] < vocab_size))
 
     def training_step(self, batch, batch_idx):
         """訓練ステップ処理"""
         loss = self._step(batch)
+        self.nsteps_ += 1
         return {"loss": loss}
 
     def training_epoch_end(self, outputs):
@@ -114,9 +93,12 @@ class MT5FineTuner(pl.LightningModule):
         # print(self.epoch_, outputs)
         loss = torch.stack([x["loss"] for x in outputs]).mean()
         self.log("train_loss", loss, prog_bar=self.hparams.progress_bar)
+        self.nepochs_ += 1
         if not self.hparams.progress_bar:
             print(
-                f'Epoch {self.epoch_} train_loss {loss} train_PPL {math.exp(loss)}')
+                f'Epoch {self.nepoch_} {self.nsteps_} steps train_loss {loss} train_PPL {math.exp(loss)}')
+        self.hparams.da_choice = min(1.0, self.hparams.da_choice + 0.1)
+        self.hparams.da_shuffle = min(1.0, self.hparams.da_choice + 0.05)
 
     def validation_step(self, batch, batch_idx):
         """バリデーションステップ処理"""
@@ -130,13 +112,15 @@ class MT5FineTuner(pl.LightningModule):
         self.log("val_loss", avg_loss, prog_bar=self.hparams.progress_bar)
         if not self.hparams.progress_bar:
             print(
-                f'Epoch {self.epoch_} val_loss {avg_loss} val_PPL {math.exp(avg_loss)}')
-        self.epoch_ += 1
+                f'Epoch {self.nepoch_} val_loss {avg_loss} val_PPL {math.exp(avg_loss)}')
         self.dataset.split()
-        if self.hparams.save_checkpoint:
-            print(f'saving checkpoint model to {self.hparams.output_dir}')
-            self.tokenizer.save_pretrained(self.hparams.output_dir)
-            self.model.save_pretrained(self.hparams.output_dir)
+        if self.hparams.save_checkpoint and self.nepoch_ > 1:
+            output_dir = f'{self.hparams.output_dir}.{self.nepoch_}'
+            print(f'saving checkpoint model to {output_dir}')
+            if not os.path.isdir(output_dir):
+                os.makedirs(output_dir)
+            self.tokenizer.save_pretrained(output_dir)
+            self.model.save_pretrained(output_dir)
 
     # def test_step(self, batch, batch_idx):
     #     """テストステップ処理"""
@@ -214,8 +198,8 @@ class MT5FineTuner(pl.LightningModule):
 def _main():
     init_dict = dict(
         output_dir='./model',  # path to save the checkpoints
-        model_name_or_path='google/mt5-small',
-        tokenizer_name_or_path='google/mt5-small',
+        model_name_or_path='megagonlabs/t5-base-japanese-web',
+        tokenizer_name_or_path='megagonlabs/t5-base-japanese-web',
         additional_tokens='<e0> <e1> <e2> <e3> <e4> <e5> <e6> <e7> <e8> <e9>',
         seed=42,
         encoding='utf_8',
@@ -224,7 +208,7 @@ def _main():
         max_seq_length=128,
         target_max_seq_length=128,
         # da
-        da_choice=0.5, da_shuffle=0.4, bos_token='',
+        da_choice=0.4, da_shuffle=0.3, bos_token='',
         # unsupervised training option
         masking=False,
         masking_ratio=0.35,
@@ -285,9 +269,8 @@ def _main():
 
     model = MT5FineTuner(hparams)
     trainer = pl.Trainer(**train_params)
-    model.epoch_ = -100
     trainer.tune(model)
-    model.epoch_ = 0
+    model.nepoch_ = 0
     print(f'Start training: max {hparams.max_epochs} epochs')
     trainer.fit(model)
 

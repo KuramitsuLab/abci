@@ -1,3 +1,4 @@
+from functools import partial
 from importlib import import_module
 import datetime
 import numpy as np
@@ -20,13 +21,30 @@ class Person:
         self.age = 17
 
 
+class Missing:
+    def __call__(self, *args, **kwargs):
+        if len(kwargs) == 0:
+            return ('__call__', *args)
+        return ('__call__', *args, dict(**kwargs))
+
+    def method_missing(self, name, *args, **kwargs):
+        if len(kwargs) == 0:
+            return (name, *args)
+        return (name, *args, dict(**kwargs))
+
+    def __getattr__(self, name):
+        return partial(self.method_missing, name)
+
+
 obj = Person()
+missing = Missing()
 
 
 def _load_variables():
     df = pd.DataFrame(data=[[1, 2.2, 'a'], [4, 5.8, 'a']],
                       columns=['A', 'B', 'C'])
     return dict(
+        missing=missing,
         n=1,
         n2=3,
         n3=-1,
@@ -91,5 +109,4 @@ def test_code(code, test_with='', reload=True):
             VARS = _load_variables()
         return str(v).replace('\n', '\\n')
     except Exception as e:
-        # print(repr(e))
-        return (e, test_with)
+        return str(e).replace('\n', '\\n')

@@ -183,16 +183,17 @@ def transform_translate(pair, hparams):
     text, code = pair
     text = multiese_da(text,
                        choice=hparams.da_choice,
-                       shuffle=hparams.da_shuffle) + ' '
-    names = [x[1] for x in VARPAT.findall(text) if x[1] in code]
-    d = {}
-    oldnews = []
-    for name in names:
-        if name not in d:
-            d[name] = f'<e{len(d)}>'
-            oldnews.append((f'@{name}@', d[name]))
-    text = _replace(text, oldnews).strip()
-    code = _replace(code+' ', oldnews).strip()
+                       shuffle=hparams.da_shuffle)
+    if random.ranom() < hparams.masking_ratio:
+        names = [x[1] for x in VARPAT.findall(text+' ') if x[1] in code]
+        d = {}
+        oldnews = []
+        for name in names:
+            if name not in d:
+                d[name] = f'<e{len(d)}>'
+                oldnews.append((f'@{name}@', d[name]))
+        text = _replace(text, oldnews).strip()
+        code = _replace(code+' ', oldnews).strip()
     return text, code
 
 
@@ -249,15 +250,17 @@ def transform_multitask(pair, hparams):
 def compose_testing(gen_fn, trans_prefix='trans'):
     def testing(src, tgt):
         if src.startswith(trans_prefix):
-            names = [x[1] for x in VARPAT.findall(src) if x[1] in tgt]
+            src2 = src + ' '
+            names = [x[1] for x in VARPAT.findall(src2) if x[1] in tgt]
             d = {}
             oldnews = []
             for name in names:
                 if name not in d:
                     d[name] = f'<e{len(d)}>'
                     oldnews.append((f'@{name}@', d[name]))
-            src = _replace(src, oldnews).strip()
-            gen = _reverse_replace(gen_fn(src), oldnews).strip()
+            src2 = _replace(src2, oldnews).strip()
+            src2 = gen_fn(src2)
+            gen = _reverse_replace(src2, oldnews).replace('@', '').strip()
             return src, gen, tgt
         else:
             return src, gen_fn(src), tgt
