@@ -48,7 +48,8 @@ class MT5FineTuner(pl.LightningModule):
         print(self.model.config)
         print(self.model.config.vocab_size, self.hparams.vocab_size)
         self.train_dataset = None
-        self.nsteps_ = -100
+        self.nepochs_ = 0
+        self.nsteps_ = 0
 
     def forward(self, input_ids, attention_mask=None, decoder_input_ids=None,
                 decoder_attention_mask=None, labels=None):
@@ -87,14 +88,17 @@ class MT5FineTuner(pl.LightningModule):
         # print(self.epoch_, outputs)
         loss = torch.stack([x["loss"] for x in outputs]).mean()
         self.log("train_loss", loss, prog_bar=self.hparams.progress_bar)
-        self.epoch_ += 1
+        self.nepochs_ += 1
         if not self.hparams.progress_bar:
             print(
-                f'Epoch {self.epoch_} steps {self.nsteps_} train_loss {loss} train_PPL {math.exp(loss)}')
-        if self.hparams.save_checkpoint:
-            print(f'saving checkpoint model to {self.hparams.output_dir}')
-            self.tokenizer.save_pretrained(self.hparams.output_dir)
-            self.model.save_pretrained(self.hparams.output_dir)
+                f'Epoch {self.nepochs_} steps {self.nsteps_} train_loss {loss} train_PPL {math.exp(loss)}')
+        if self.hparams.save_checkpoint and self.nepochs_ > 1:
+            output_dir = f'{self.hparams.output_dir}.{self.nepoch_}'
+            print(f'saving checkpoint model to {output_dir}')
+            if not os.path.isdir(output_dir):
+                os.makedirs(output_dir)
+            self.tokenizer.save_pretrained(output_dir)
+            self.model.save_pretrained(output_dir)
         self.dataset.split()
 
     # def validation_step(self, batch, batch_idx):
@@ -200,26 +204,26 @@ def _main():
         encoding='utf_8',
         column=0, target_column=1,
         kfold=5,  # cross validation
-        max_seq_length=128,
-        target_max_seq_length=128,
+        max_seq_length=80,
+        target_max_seq_length=80,
         # da
         da_choice=0.5, da_shuffle=0.4, bos_token='',
         # unsupervised training option
         masking=False,
-        masking_ratio=0.35,
+        masking_ratio=0.4,
         masking_style='denoising',
         # training
         learning_rate=3e-4,
         weight_decay=0.0,
         adam_epsilon=1e-8,
         warmup_steps=0,
-        batch_size=8,
+        batch_size=0,
         num_workers=2,  # os.cpu_count(),
         # train_batch_size=8,
         save_checkpoint=False,
         progress_bar=False,
         # eval_batch_size=8,
-        max_epochs=50,
+        max_epochs=10,
         limit_batches=-1,
         gradient_accumulation_steps=1,  # 16
         n_gpu=1 if USE_GPU else 0,
@@ -264,11 +268,7 @@ def _main():
 
     model = MT5FineTuner(hparams)
     trainer = pl.Trainer(**train_params)
-    model.epoch_ = -100
-    model.nsteps_ = -100
     trainer.tune(model)
-    model.epoch_ = 0
-    model.nsteps_ = 0
     print(f'Start training: max {hparams.max_epochs} epochs')
     trainer.fit(model)
 
