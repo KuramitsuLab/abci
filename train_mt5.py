@@ -114,8 +114,8 @@ class MT5FineTuner(pl.LightningModule):
             print(
                 f'Epoch {self.nepochs_} val_loss {avg_loss} val_PPL {math.exp(avg_loss)}')
         self.dataset.split()
-        if self.hparams.save_checkpoint and self.nepoch_ > 1:
-            output_dir = f'{self.hparams.output_dir}.{self.nepoch_}'
+        if self.hparams.save_checkpoint and self.nepochs_ > 1:
+            output_dir = f'{self.hparams.output_dir}.{self.nepochs_}'
             print(f'saving checkpoint model to {output_dir}')
             if not os.path.isdir(output_dir):
                 os.makedirs(output_dir)
