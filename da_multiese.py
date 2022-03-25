@@ -184,16 +184,15 @@ def transform_translate(pair, hparams):
     text = multiese_da(text,
                        choice=hparams.da_choice,
                        shuffle=hparams.da_shuffle)
-    if random.ranom() < hparams.masking_ratio:
-        names = [x[1] for x in VARPAT.findall(text+' ') if x[1] in code]
-        d = {}
-        oldnews = []
-        for name in names:
-            if name not in d:
-                d[name] = f'<e{len(d)}>'
-                oldnews.append((f'@{name}@', d[name]))
-        text = _replace(text, oldnews).strip()
-        code = _replace(code+' ', oldnews).strip()
+    names = [x[1] for x in VARPAT.findall(text+' ') if x[1] in code]
+    d = {}
+    oldnews = []
+    for name in names:
+        if name not in d:
+            d[name] = f'<e{len(d)}>'
+            oldnews.append((f'@{name}@', d[name]))
+    text = _replace(text, oldnews).strip()
+    code = _replace(code+' ', oldnews).strip()
     return text, code
 
 

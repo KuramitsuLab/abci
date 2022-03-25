@@ -34,22 +34,16 @@ class MT5FineTuner(pl.LightningModule):
         config.vocab_size = max(config.vocab_size,
                                 self.hparams.tokenizer.vocab_size,
                                 self.hparams.vocab_size)
-        self.nsteps_ = 0
-        self.nepochs_ = 0
         if '/mt5' in self.hparams.model_name_or_path:
             self.model = MT5ForConditionalGeneration(config)
-            # self.model = MT5ForConditionalGeneration.from_pretrained(
-            #     self.hparams.model_name_or_path)
         else:
             self.model = MT5ForConditionalGeneration(config)
-            # self.model = T5ForConditionalGeneration.from_pretrained(
-            #     self.hparams.model_name_or_path)
-        # config = AutoConfig.from_pretrained(self.hparams.model_name_or_path)
-        # self.model = AutoModel.from_config(config)
         self.tokenizer = self.hparams.tokenizer
         print(self.model.config)
         print(self.model.config.vocab_size, self.hparams.vocab_size)
         self.train_dataset = None
+        self.nsteps_ = -1
+        self.nepochs_ = -1
 
     def forward(self, input_ids, attention_mask=None, decoder_input_ids=None,
                 decoder_attention_mask=None, labels=None):
@@ -85,7 +79,8 @@ class MT5FineTuner(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         """訓練ステップ処理"""
         loss = self._step(batch)
-        self.nsteps_ += 1
+        if self.nsteps_ >= 0:
+            self.nsteps_ += 1
         return {"loss": loss}
 
     def training_epoch_end(self, outputs):
@@ -93,12 +88,20 @@ class MT5FineTuner(pl.LightningModule):
         # print(self.epoch_, outputs)
         loss = torch.stack([x["loss"] for x in outputs]).mean()
         self.log("train_loss", loss, prog_bar=self.hparams.progress_bar)
-        self.nepochs_ += 1
+        if self.nepochs_ >= 0:
+            self.nepochs_ += 1
         if not self.hparams.progress_bar:
             print(
                 f'Epoch {self.nepochs_} steps {self.nsteps_} train_loss {loss} train_PPL {math.exp(loss)}')
         self.hparams.da_choice = min(1.0, self.hparams.da_choice + 0.1)
         self.hparams.da_shuffle = min(1.0, self.hparams.da_choice + 0.05)
+        if self.hparams.save_checkpoint and self.nepochs_ > 1:
+            output_dir = f'{self.hparams.output_dir}.{self.nepochs_}'
+            print(f'saving checkpoint model to {output_dir}')
+            if not os.path.isdir(output_dir):
+                os.makedirs(output_dir)
+            self.tokenizer.save_pretrained(output_dir)
+            self.model.save_pretrained(output_dir)
 
     def validation_step(self, batch, batch_idx):
         """バリデーションステップ処理"""
@@ -114,13 +117,6 @@ class MT5FineTuner(pl.LightningModule):
             print(
                 f'Epoch {self.nepochs_} val_loss {avg_loss} val_PPL {math.exp(avg_loss)}')
         self.dataset.split()
-        if self.hparams.save_checkpoint and self.nepochs_ > 1:
-            output_dir = f'{self.hparams.output_dir}.{self.nepochs_}'
-            print(f'saving checkpoint model to {output_dir}')
-            if not os.path.isdir(output_dir):
-                os.makedirs(output_dir)
-            self.tokenizer.save_pretrained(output_dir)
-            self.model.save_pretrained(output_dir)
 
     # def test_step(self, batch, batch_idx):
     #     """テストステップ処理"""
@@ -271,6 +267,8 @@ def _main():
     trainer = pl.Trainer(**train_params)
     trainer.tune(model)
     print(f'Start training: max {hparams.max_epochs} epochs')
+    trainer.nepochs_ = 0
+    trainer.nsteps_ = 0
     trainer.fit(model)
 
     # 最終エポックのモデルを保存

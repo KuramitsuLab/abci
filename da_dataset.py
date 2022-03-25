@@ -51,14 +51,7 @@ def _loading_dataset(hparams):
                         if column < len(row) and target_column < len(row):
                             src = row[column]
                             tgt = row[target_column]
-                            dataset.append((src, tgt))
-                            if hparams.data_duplication == True:
-                                if src.count('{') > 0:
-                                    dataset.append((src, tgt))
-                                if src.count('|') > 5:
-                                    dataset.append((src, tgt))
-                                if src.count('[') > 3:
-                                    dataset.append((src, tgt))
+                            _append_dup(hparams, dataset, src, tgt)
             elif file.endswith('.jsonl'):
                 with io.open(file, encoding=hparams.encoding) as f:
                     for line in f.readlines():
@@ -71,6 +64,24 @@ def _loading_dataset(hparams):
                         dataset.append((d, d))
     logging.info(f'loaded {len(dataset)} dataset')
     return dataset
+
+
+def _append_da(dataset, src, tgt):
+    dataset.append((src, tgt))
+    brace = src.count('{')
+    square = src.count('[')
+    vbar = src.count('|')
+    if brace > 0 and vbar != 0:
+        dataset.append((src, tgt))
+    if vbar > 5 or square > 3:
+        dataset.append((src, tgt))
+
+
+def _append_dup(hparams, dataset, src, tgt):
+    _append_da(dataset, src, tgt)
+    if src.startswith('trans:'):
+        src = src.replace('trans:', 'code:')
+        _append_da(dataset, src, tgt)
 
 
 def transform_nop(pair, hparams):
@@ -252,9 +263,11 @@ def init_hparams(init_dict, description='Trainer of mT5 on ABCI', Tokenizer=None
 
     if hparams.name == '':
         hparams.suffix = ''
+        hparams.prefix = ''
     else:
+        hparams.prefix = hparams.name
         hparams.suffix = f'_{hparams.name}'
-        hparams.output_dir = f'{hparams.output_dir}{hparams.suffix}'
+        hparams.output_dir = f'{hparams.prefix}/{hparams.output_dir}'
 
     _set_seed(hparams.seed)
 
@@ -328,8 +341,9 @@ def _main():
         kfold=5,  # cross validation
         max_seq_length=128,
         target_max_seq_length=128,
+        progress_bar=False,
         # da
-        da_choice=0.5, da_shuffle=0.3, bos_token='',
+        da_choice=1.0, da_shuffle=1.0, bos_token='',
         # unsupervised training option
         masking=False,
         masking_ratio=0.35,

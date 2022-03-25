@@ -270,6 +270,8 @@ def _main():
     trainer = pl.Trainer(**train_params)
     trainer.tune(model)
     print(f'Start training: max {hparams.max_epochs} epochs')
+    trainer.nepochs_ = 0
+    trainer.nsteps_ = 0
     trainer.fit(model)
 
     # 最終エポックのモデルを保存
