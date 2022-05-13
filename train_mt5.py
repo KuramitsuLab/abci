@@ -285,7 +285,7 @@ def _main():
 
     # 最終エポックのモデルを保存
     train_data = model.train_dataset
-    test_data = model.test_dataset
+    test_data = model.valid_dataset
     tokenizer = model.tokenizer
     model = model.model
     print('saving pretrained ... ', hparams.output_dir)
