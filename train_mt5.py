@@ -92,7 +92,7 @@ class MT5FineTuner(pl.LightningModule):
             self.nepochs_ += 1
         if not self.hparams.progress_bar:
             print(
-                f'Epoch {self.nepochs_} steps {self.nsteps_} train_loss {loss} train_PPL {math.exp(loss)}')
+                f'Epoch {self.current_epoch} train_loss {loss} train_PPL {math.exp(loss)}')
         # if self.hparams.save_checkpoint and self.nepochs_ > 1:
         #     output_dir = f'{self.hparams.output_dir}.{self.nepochs_}'
         #     print(f'saving checkpoint model to {output_dir}')
@@ -113,7 +113,7 @@ class MT5FineTuner(pl.LightningModule):
         self.log("val_loss", avg_loss, prog_bar=self.hparams.progress_bar)
         if not self.hparams.progress_bar:
             print(
-                f'Epoch {self.nepochs_} val_loss {avg_loss} val_PPL {math.exp(avg_loss)}')
+                f'Epoch {self.current_epoch} val_loss {avg_loss} val_PPL {math.exp(avg_loss)}')
         # self.dataset.split()
 
     # def test_step(self, batch, batch_idx):
