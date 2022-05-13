@@ -14,7 +14,7 @@ from transformers import (
     get_linear_schedule_with_warmup
 )
 
-from da_dataset import init_hparams, DADataset, KFoldDataset
+from train_common import init_hparams, load_TrainTestDataSet
 
 # GPU利用有無
 USE_GPU = torch.cuda.is_available()
@@ -93,15 +93,13 @@ class MT5FineTuner(pl.LightningModule):
         if not self.hparams.progress_bar:
             print(
                 f'Epoch {self.nepochs_} steps {self.nsteps_} train_loss {loss} train_PPL {math.exp(loss)}')
-        self.hparams.da_choice = min(1.0, self.hparams.da_choice + 0.1)
-        self.hparams.da_shuffle = min(1.0, self.hparams.da_choice + 0.05)
-        if self.hparams.save_checkpoint and self.nepochs_ > 1:
-            output_dir = f'{self.hparams.output_dir}.{self.nepochs_}'
-            print(f'saving checkpoint model to {output_dir}')
-            if not os.path.isdir(output_dir):
-                os.makedirs(output_dir)
-            self.tokenizer.save_pretrained(output_dir)
-            self.model.save_pretrained(output_dir)
+        # if self.hparams.save_checkpoint and self.nepochs_ > 1:
+        #     output_dir = f'{self.hparams.output_dir}.{self.nepochs_}'
+        #     print(f'saving checkpoint model to {output_dir}')
+        #     if not os.path.isdir(output_dir):
+        #         os.makedirs(output_dir)
+        #     self.tokenizer.save_pretrained(output_dir)
+        #     self.model.save_pretrained(output_dir)
 
     def validation_step(self, batch, batch_idx):
         """バリデーションステップ処理"""
@@ -116,7 +114,7 @@ class MT5FineTuner(pl.LightningModule):
         if not self.hparams.progress_bar:
             print(
                 f'Epoch {self.nepochs_} val_loss {avg_loss} val_PPL {math.exp(avg_loss)}')
-        self.dataset.split()
+        # self.dataset.split()
 
     # def test_step(self, batch, batch_idx):
     #     """テストステップ処理"""
@@ -159,16 +157,16 @@ class MT5FineTuner(pl.LightningModule):
             "frequency": 1
         }]
 
-    def get_dataset(self):
-        """データセットを作成する"""
-        return KFoldDataset(DADataset(self.hparams))
+    # def get_dataset(self):
+    #     """データセットを作成する"""
+    #     return KFoldDataset(DADataset(self.hparams))
 
     def setup(self, stage=None):
         """初期設定（データセットの読み込み）"""
         if stage == 'fit' or stage is None:
             if self.train_dataset is None:
-                self.dataset = self.get_dataset()
-                self.train_dataset, self.valid_dataset = self.dataset.split()
+                self.train_dataset, self.valid_dataset = load_TrainTestDataSet(
+                    self.hparams)
             self.t_total = (
                 (len(self.train_dataset) //
                  (self.hparams.batch_size * max(1, self.hparams.n_gpu)))
@@ -189,6 +187,20 @@ class MT5FineTuner(pl.LightningModule):
         return DataLoader(self.valid_dataset,
                           batch_size=self.hparams.batch_size,
                           num_workers=self.hparams.num_workers)
+
+
+def make_generate(model, tokenizer):
+    def greedy_search(s: str, max_length=128) -> str:
+        input_ids = tokenizer.encode_plus(
+            s,
+            add_special_tokens=True,
+            max_length=max_length,
+            padding="do_not_pad",
+            truncation=True,
+            return_tensors='pt').input_ids.to(model.device)
+        greedy_output = model.generate(input_ids, max_length=max_length)
+        return tokenizer.decode(greedy_output[0], skip_special_tokens=True)
+    return greedy_search
 
 
 def _main():
@@ -272,31 +284,20 @@ def _main():
     trainer.fit(model)
 
     # 最終エポックのモデルを保存
-    dataset = model.dataset
+    train_data = model.train_dataset
+    test_data = model.test_dataset
     tokenizer = model.tokenizer
     model = model.model
+    print('saving pretrained ... ', hparams.output_dir)
     tokenizer.save_pretrained(hparams.output_dir)
     model.save_pretrained(hparams.output_dir)
 
-    if not hparams.masking:
-        print('testing ... ', model.device)
-        generate = load_nmt(model, tokenizer)
-        def testing(src, tgt): return (src, generate(src), tgt)
-        dataset.test_and_save(testing, file=f'mt5_result{hparams.suffix}.tsv')
-
-
-def load_nmt(model, tokenizer):
-    def greedy_search(s: str, max_length=128) -> str:
-        input_ids = tokenizer.encode_plus(
-            s,
-            add_special_tokens=True,
-            max_length=max_length,
-            padding="do_not_pad",
-            truncation=True,
-            return_tensors='pt').input_ids.to(model.device)
-        greedy_output = model.generate(input_ids, max_length=max_length)
-        return tokenizer.decode(greedy_output[0], skip_special_tokens=True)
-    return greedy_search
+    print('testing ... ', model.device)
+    generate = make_generate(model, tokenizer)
+    train_data.test_and_save(
+        generate, f'{hparams.output_dir}/result_train.tsv')
+    test_data.test_and_save(
+        generate, f'{hparams.output_dir}/result_test.tsv')
 
 
 if __name__ == '__main__':

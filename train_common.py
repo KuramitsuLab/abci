@@ -13,16 +13,16 @@ from logging import StreamHandler, FileHandler, Formatter
 import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
-from da_multiese import transform_multitask
-from da_masking import get_transform_masking
 
 
-def _loading_dataset(hparams):
+def _loading_dataset(hparams, files=None):
     dataset = []
+    if files is None:
+        files = hparams.files
     column = hparams.column
     target_column = hparams.target_column
     if target_column == -1:
-        for file in hparams.files:
+        for file in files:
             logging.info(f'loading {file}')
             if file.endswith('.csv') or file.endswith('.tsv'):
                 sep = ',' if file.endswith('.csv') else '\t'
@@ -41,7 +41,7 @@ def _loading_dataset(hparams):
                     for line in f.readlines():
                         dataset.append(line.rstrip('\n'))
     else:
-        for file in hparams.files:
+        for file in files:
             logging.info(f'loading {file}')
             if file.endswith('.csv') or file.endswith('.tsv'):
                 sep = ',' if file.endswith('.csv') else '\t'
@@ -51,7 +51,7 @@ def _loading_dataset(hparams):
                         if column < len(row) and target_column < len(row):
                             src = row[column]
                             tgt = row[target_column]
-                            _append_dup(hparams, dataset, src, tgt)
+                            dataset.append((src, tgt))
             elif file.endswith('.jsonl'):
                 with io.open(file, encoding=hparams.encoding) as f:
                     for line in f.readlines():
@@ -65,29 +65,77 @@ def _loading_dataset(hparams):
     logging.info(f'loaded {len(dataset)} dataset')
     return dataset
 
-
-def _append_da(dataset, src, tgt):
-    dataset.append((src, tgt))
-    brace = src.count('{')
-    square = src.count('[')
-    vbar = src.count('|')
-    if brace > 0 and vbar != 0:
-        dataset.append((src, tgt))
-    if vbar > 5 or square > 3:
-        dataset.append((src, tgt))
+# MULTITASKING_TRANSFORM
 
 
-def _append_dup(hparams, dataset, src, tgt):
-    _append_da(dataset, src, tgt)
-    if src.startswith('trans:'):
-        src = src.replace('trans:', 'code:')
-        _append_da(dataset, src, tgt)
+def encode_t5(src, tgt, hparams):
+    inputs = hparams.tokenizer.batch_encode_plus(
+        [src],
+        max_length=hparams.max_seq_length,
+        truncation=True,
+        pad_to_max_length=True,
+        padding="max_length", return_tensors="pt")
+    targets = hparams.tokenizer.batch_encode_plus(
+        [tgt],
+        max_length=hparams.target_max_seq_length,
+        truncation=True,
+        pad_to_max_length=True,
+        padding="max_length", return_tensors="pt")
+
+    source_ids = inputs["input_ids"].squeeze()
+    source_mask = inputs["attention_mask"].squeeze()
+
+    target_ids = targets["input_ids"].squeeze()
+    target_mask = targets["attention_mask"].squeeze()
+
+    return {
+        "source_ids": source_ids.to(dtype=torch.long),
+        "source_mask": source_mask.to(dtype=torch.long),
+        "target_ids": target_ids.to(dtype=torch.long),
+        "target_mask": target_mask.to(dtype=torch.long),
+    }
 
 
-def transform_nop(pair, hparams):
-    if isinstance(pair, str):
-        return pair, pair
-    return pair
+def encode_string(src, tgt, hparams):
+    return src, tgt
+
+
+class TSVDataset(Dataset):
+    def __init__(self, hparams, dataset):
+        self.hparams = hparams
+        self.dataset = dataset
+        self.encode = hparams.encode
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, index):
+        src, tgt = self.dataset[index]
+        return self.encode(src, tgt, self.hparams)
+
+    def test_and_save(self, generate, filename):
+        encode_orig = self.encode
+        self.encode = encode_string
+        try:
+            with open(filename, 'w') as f:
+                for src, tgt in self:
+                    gen = generate(src)
+                    print(f'{src}\t{gen}\t{tgt}', file=f)
+        finally:
+            self.encode = encode_orig
+
+
+def load_TrainTestDataSet(hparams):
+    train_files = []
+    test_files = []
+    for file in hparams.files:
+        if '_train.' in file:
+            train_files.append(file)
+        elif '_test.' in file:
+            test_files.append(file)
+        else:
+            train_files.append(file)
+    return TSVDataset(hparams, _loading_dataset(hparams, train_files)), TSVDataset(hparams, _loading_dataset(hparams, test_files))
 
 
 class DADataset(Dataset):
@@ -179,41 +227,6 @@ class KFoldDataset(Dataset):
                     self.allset.test_and_save(gen_fn, file=f)
             else:
                 self.allset.test_and_save(gen_fn, file=file)
-
-
-# MULTITASKING_TRANSFORM
-
-
-def encode_t5(src, tgt, hparams):
-    inputs = hparams.tokenizer.batch_encode_plus(
-        [src],
-        max_length=hparams.max_seq_length,
-        truncation=True,
-        pad_to_max_length=True,
-        padding="max_length", return_tensors="pt")
-    targets = hparams.tokenizer.batch_encode_plus(
-        [tgt],
-        max_length=hparams.target_max_seq_length,
-        truncation=True,
-        pad_to_max_length=True,
-        padding="max_length", return_tensors="pt")
-
-    source_ids = inputs["input_ids"].squeeze()
-    source_mask = inputs["attention_mask"].squeeze()
-
-    target_ids = targets["input_ids"].squeeze()
-    target_mask = targets["attention_mask"].squeeze()
-
-    return {
-        "source_ids": source_ids.to(dtype=torch.long),
-        "source_mask": source_mask.to(dtype=torch.long),
-        "target_ids": target_ids.to(dtype=torch.long),
-        "target_mask": target_mask.to(dtype=torch.long),
-    }
-
-
-def encode_string(src, tgt, hparams):
-    return src, tgt
 
 
 def _setup_extra_id(hparams):
@@ -343,7 +356,9 @@ def _main():
         target_max_seq_length=128,
         progress_bar=False,
         # da
-        da_choice=1.0, da_shuffle=1.0, bos_token='',
+        da_choice=1.0,
+        da_shuffle=1.0,
+        bos_token='',
         # unsupervised training option
         masking=False,
         masking_ratio=0.35,
@@ -351,8 +366,7 @@ def _main():
     )
     hparams = init_hparams(init_dict)
     print(hparams)
-    dataset = KFoldDataset(DADataset(hparams))
-    dataset.test_and_save(gen_fn=lambda src, tgt: (src, tgt, ''))
+    load_TrainTestDataSet(hparams)
 
 
 if __name__ == '__main__':
