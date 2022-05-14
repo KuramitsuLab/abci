@@ -117,10 +117,15 @@ class TSVDataset(Dataset):
         encode_orig = self.encode
         self.encode = encode_string
         try:
+            c = 0
             with open(filename, 'w') as f:
                 for src, tgt in self:
                     gen = generate(src)
                     print(f'{src}\t{gen}\t{tgt}', file=f)
+                    f.flush()
+                    if c % 10 == 0:
+                        print(f'{src}\t{gen}\t{tgt}')
+                    c += 1
         finally:
             self.encode = encode_orig
 

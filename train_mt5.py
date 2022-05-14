@@ -292,12 +292,14 @@ def _main():
     tokenizer.save_pretrained(hparams.output_dir)
     model.save_pretrained(hparams.output_dir)
 
+    DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    model.to(DEVICE)
     print('testing ... ', model.device)
     generate = make_generate(model, tokenizer)
     test_data.test_and_save(
         generate, f'{hparams.output_dir}/result_test.tsv')
-    train_data.test_and_save(
-        generate, f'{hparams.output_dir}/result_train.tsv')
+    # train_data.test_and_save(
+    #     generate, f'{hparams.output_dir}/result_train.tsv')
 
 
 if __name__ == '__main__':
