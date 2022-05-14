@@ -294,10 +294,10 @@ def _main():
 
     print('testing ... ', model.device)
     generate = make_generate(model, tokenizer)
-    train_data.test_and_save(
-        generate, f'{hparams.output_dir}/result_train.tsv')
     test_data.test_and_save(
         generate, f'{hparams.output_dir}/result_test.tsv')
+    train_data.test_and_save(
+        generate, f'{hparams.output_dir}/result_train.tsv')
 
 
 if __name__ == '__main__':
