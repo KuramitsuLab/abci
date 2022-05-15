@@ -113,7 +113,7 @@ class TSVDataset(Dataset):
         src, tgt = self.dataset[index]
         return self.encode(src, tgt, self.hparams)
 
-    def test_and_save(self, generate, filename):
+    def test_and_save(self, generate, filename, max=None):
         encode_orig = self.encode
         self.encode = encode_string
         try:
@@ -126,6 +126,8 @@ class TSVDataset(Dataset):
                     if c % 10 == 0:
                         print(f'{src}\t{gen}\t{tgt}')
                     c += 1
+                    if max is not None and c > max:
+                        break
         finally:
             self.encode = encode_orig
 

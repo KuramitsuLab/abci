@@ -298,8 +298,8 @@ def _main():
     generate = make_generate(model, tokenizer)
     test_data.test_and_save(
         generate, f'{hparams.output_dir}/result_test.tsv')
-    # train_data.test_and_save(
-    #     generate, f'{hparams.output_dir}/result_train.tsv')
+    train_data.test_and_save(
+        generate, f'{hparams.output_dir}/result_train.tsv', max=1000)
 
 
 if __name__ == '__main__':
