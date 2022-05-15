@@ -1,0 +1,471 @@
+文字列elementが辞書adictの値に含まれているか調べる	element in adict.values()
+データフレームdfをカラムcol毎にグループ化して、合計を求める	df.groupby(col).sum()
+ファイルパスのセパレータ記号	os.sep
+データフレームdfの第一四分位数	df.quantile(0.25)
+データフレームdfを__Y__によってソートする	df.sort_values(by=col)
+書式textをmappingでフォーマットする	text.format_map(mapping)
+sをs2で区切る	s.split(s2)
+オプションで、エンコーディングエラーを無視するように設定する	errors = 'ignore'
+セットasetの濃度	len(aset)
+n割るn2の切り上げ	(n + n2 - 1) // n2
+ファイルfilenameからディレクトリ名を使う	os.path.dirname(filename)
+オプションで、降順にする	ascending = False
+リストiterableを文字列に変換して連結する	''.join(map(str, iterable))
+xのハッシュ値	hash(x)
+xが無限大か調べる	math.isinf(x)
+ネイピア数	math.e
+データフレームdfの末尾	df.tail()
+nとn2のコンビネーション	math.comb(n, n2)
+十六進sをバイト列に変換する	int(s, 16).to_bytes(length=n, byteorder='big')
+nのn2乗	n ** n2
+リストxdataをヒストグラムにする	plt.hist(xdata)
+sを積極的に英小文字に変換する	s.casefold()
+データフレームを表示するとき、小数点以下の表示精度をn桁に設定する	pd.set_option('precision', n)
+エラーを無視してsをバイト列に変換する	s.encode(errors='ignore')
+xにx2を掛ける	x * x2
+与えられた浮動小数点数の有理数近似	q.limit_denominator(max_denominator=1000000)
+sがs2で始まるか調べる	s.startswith(s2)
+データフレームdfのn分位数	df.quantile(n/100)
+再帰数の上限を上げる	sys.setrecursionlimit(1000000)
+リストxdataについてのヒストグラムを描画して、透明度をxに設定する	plt.hist(xdata, alpha=x)
+nがn2か調べる	n == n2
+データフレームdfを関数funcでグループ化する	df.groupby(func)
+グラフの背景色を白くする	sns.set(style='whitegrid')
+TSVファイルfilenameからCSVファイルをSJISで読み込む	pd.read_csv(filename, encoding='shift_jis')
+xを切り上げる	math.ceil(x)
+数式として、eのzについてのn階微分を求める	sympy.diff(e, z, n)
+xの整数部	math.modf(x)[1]
+標準入力から1行だけ読む	sys.stdin.readline()
+日時dtの月数	dt.month
+nをn2で割る	n / n2
+データフレームdf中の欠損値がある行を削除する	df.dropna()
+カウンタaCounterとカウンタaCounter2に共通する要素からなるカウンタ	aCounter & aCounter2
+cからリストiterableを引く	aCounter.subtract(iterable)
+ファイルfilenameのファイルサイズ	os.path.get_size(filename)
+日時dtを浮動小数点数に変換する	dt.timestamp()
+Pandasで、データフレームdfのcollを日付データに変換する	pd.to_datetime(df[col])
+リストydataを横軸と指定して、折れ線グラフを描画する	plt.plot(range(len(xdata)), xdata)
+エクセルファイルファイルfilenameからn番目のシートをデータフレームとして読み込む	pd.read_excel(filename, sheet_name=n)
+整数nをバイト列に変換する	n.to_bytes(length=n2, byteorder='big')
+分母が高々max_denominatorである、selfに最も近いFractionを見付けて	q.limit_denominator(max_denominator=1000000)
+セットasetとセットaset2の和集合	aset.union(aset2)
+ファイルfilenameの拡張子をtextに変更する	os.path.splitext(filename)[0] + text
+本日の日付	datetime.date.today()
+日時dtををn秒後に進める	dt + datetime.timedelta(seconds=n)
+リストxdataとリストydataの折れ線グラフにポイントマーカーを描画する	plt.plot(xdata, ydata, marker='.')
+リストalistの最初の文字列elementを探す	alist.index(element)
+sをバイト列に変換する	bytes(s)
+辞書adictのエントリの一覧	adict.items()
+リストxdataとリストydataのカラーコードrgbの破線グラフを描画する	plt.plot(xdata, ydata, linestyle='dashed', color=rgb)
+データフレームdfのn行までを抽出する	df[:n]
+オプションで、破壊的に操作する	inplace = True
+xにx2を加える	x + x2
+日時dtをn日前に戻す	dt - datetime.timedelta(days=n)
+Pandasのバージョンを表示する	print(pd.__version__)
+現在の作業ディレクトリ	os.getcwd()
+プログラムのファイル名を知る	sys.argv[0]
+辞書adictに辞書adict2のエントリを追加更新する	adict.update(adict2)
+アリスブルー色のマーカーで散布図を重なりを見やすく描画する	plt.plot(xdata, ydata, c='aliceblue', alpha=0.5)
+最初のカテゴリーを除外して、xをダミー変数に変換する	pd.get_dummies(x, drop_first=True)
+データフレームdfのsを欠損値に変換する	df.replace(s, np.nan)
+グラフの見た目を良くする	import seaborn as sns
+sを最後のs2で二分し、前半の文字列を使う	s.rpartition(s2)[0]
+オプションで、先頭の行をヘッダに設定する	header = 0
+s2パターンのsを日時に変換する	datetime.datetime.strptime(s, s2)
+xを切り下げて整数に変換する	math.floor(x)
+データフレームdfをカラムcol毎にグループ化して、sというグループを使う	df.groupby(col).get_group(s)
+xにおけるガンマ関数の絶対値に自然対数をとった値	math.lgamma(x)
+xの仮数	math.frexp(x)[0]
+データフレームdfのカラムcolが正規表現sにマッチする行を抽出する	df[df[col].str.match(s)]
+データフレームdf中のカラムcolとカラムcol2に重複があれば、マスクする	df.duplicated(subset=[col1, col2])
+zが無限大に近づくときのeの極限値を求める	sympy.limit(e, z, oo)
+xの正接の逆数	math.atan(x)
+カウンタaCounterを下位n個カウントが少ない順に列挙する	aCounter.most_common()[:-n-1:-1]
+データフレームdfをJSONLファイルfilenameにSJISで保存する	df.to_csv(filename, encoding='shift_jis')
+辞書adictをJSON形式の文字列に変換する	json.dumps(adict, ensure_ascii=False)
+リストxdataのヒストグラムをnからn2の範囲で描画する	plt.hist(xdata, range=(n, n2))
+sのs2の出現回数	s.count(s2)
+リストalistのn番目の	alist[n]
+データ列dsとデータ列ds2から重複を取り除く	set(ds.unique().tolist()+ds2.unique().tolist())
+日時dtの日付	dt.date()
+sのn番目とn2番目の間にs2が含まれないか調べる	s.find(s2, start=n, end=n2) == -1
+円周率	math.pi
+データフレームdfのカラムcolとカラムcol2を抽出する	df[[col, col2]]
+黒い破線グラフを描画する	plt.plot(xdata, ydata, linestyle='dashed', color='k')
+数式として、eの展開を行う	sympy.expand(e)
+ファイルfilenameから拡張子なしのファイル名を使う	os.path.splitext(os.path.basename(filename))[0]
+リストalistとリストalist2を連結する	alist + alist2
+タプルatupleをリストに変換する	list(atuple)
+セットasetからセットaset2との共通要素を全て取り除く	aset.symmetric_difference_update(aset2)
+デックdeqから最初の文字列elementを取り除く	deq.remove(element)
+データフレームdfを1000の位で丸めて、整数型にする	df.round(-3).astype(int)
+折れ線グラフの線幅をnに設定する	plt.plot(xdata, ydata, linewidth=n)
+zが0に近づくときのeの極限値を求める	sympy.limit(e, z, 0)
+nかつn2	n and n2
+mathをインポートする	import math
+オブジェクトobjがオブジェクトobj2か調べる	obj == obj2
+sを空白で区切る	s.split()
+データフレームdfのカテゴリデータをダミー変数に変換する	pd.get_dummies(df)
+nがn2以下か調べる	n <= n2
+辞書adictからカウンタを新規に作って、Xに代入する	X = collections.Counter(adict)
+日時dtををn時間後に進める	dt + datetime.timedelta(hours=n)
+nとn2の差	n - n2
+データ列をインポートする	from sympy import substitution
+リストxdataとリストydataの線幅nの折れ線グラフを描画する	plt.plot(xdata, ydata, linewidth=n)
+データフレームdfをカラムcolによって降順にソートする	df.sort_values(by=col, ascending=False)
+セットaset∪セットaset2	aset.union(aset2)
+オブジェクトobjのハッシュ値	hash(obj)
+整数nをn2分の一にする	n //= n2
+データフレームdfのカラムcolをドロップして、更新する	df.drop(col, axis=1, inplace=True)
+データフレームdfのリストalistで指定されたカラムを抽出する	df[alist]
+リストalistをn回、連結する	alist * n
+xが一桁の数か調べる	-9 <= x <= 9
+データフレームdfの行を条件でフィルタするには	df[(df[col] == x) & (df[col2] == x2)]
+sのnからn2までの範囲でs2の出現回数	s.count(s2, start=n, end=n2)
+折れ線グラフを描画する	plt.plot(xdata, ydata)
+セットasetがセットaset2の真上位集合か調べる	aset > aset2
+データフレームdfのカラムcolがx以下の行を抽出する	df[df[col] <= x]
+セットaset⊃セットaset2	aset > aset2
+データフレームdfの重複した行を数える	df.duplicated().sum()
+リストalistとリストalist2の積集合	list(set(alist) & set(alist2))
+nがn2よりも小さいか調べる	n < n2
+セットasetがセットaset2と共通の要素を持たないか調べる	aset.isdisjoint(aset2)
+3×3の単位行列を作る	np.identity(3)
+データフレームdfの重複を見る	df.duplicated()
+線幅nの折れ線グラフを描画する	plt.plot(xdata, ydata, linewidth=n)
+空の両端キューを新しく作って、Xに代入する	X = collections.deque()
+散布図に赤いポイントマーカーを使う	plt.plot(xdata, ydata, marker='.', c='r')
+乱数シードをnで固定化する	random.seed(n)
+xの逆正接	math.atan(x)
+スクリプトファイルの絶対パス	os.path.abspath(__file__)
+赤い折れ線グラフを描画する	plt.plot(xdata, ydata, color='r')
+nからn2の範囲のヒストグラムを用いてリストxdataを描画する	plt.hist(xdata, range=(n, n2))
+リストxdataとリストydataについての散布図を大きさnで描画する	plt.scatter(xdata, ydata, s=n)
+オプションで、n番目のカラムをインデックスに設定する	index_col = n
+行列の演算をする	import numpy as np
+文字列elementがリストalistの要素でないか調べる	element not in alist
+sの中からパターンpatternにマッチする文字列を探す	re.search(pattern, s)
+B(イテレータ)をA(イテレータ)に続けて繰り返す	for X in itertools.chain(A, B):
+全てのアルファベット	string.ascii_letters
+オプションで、どのカラムもインデックスに設定しない	index_col = None
+データ列dsをn個にビン分割して、namesのラベルをつける	pd.cut(ds, n, labels=names)
+スピアマン相関係数でデータフレームdfの相関行列	df.corr(method='spearman')
+グラフを見やすくする	import seaborn as sns
+Pandasで、フォーマットでデータフレームdfのcollを日付データに変換する	pd.to_datetime(df[col], format='%Y-%m-%d')
+xの双曲線余弦の逆数	math.acosh(x)
+カラーバーを横向きで描画する	plt.colorbar(orientation='horizontal')
+データフレームdfのリストalistで指定されたカラムを削除する	df.drop(alist, axis=1)
+sの平仮名を片仮名に変換する	''.join([chr(ord(ch) + 96) if ('ぁ' <= ch <= 'ん') else ch for ch in s])
+sをs2で分けたときの後半の文字列	s.partition(s2)[-1]
+xが1、もしくは2か調べる	x == 1 or x == 2
+ファイルfilenameをUTF8でオープンする]	open(filename, encoding='utf-8')
+辞書adictのkeyの値	adict[key]
+a(リスト)をflattenする	list(itertools.chain.from_iterable(a))
+カウンタaCounterをペアリストに変換する	aCounter.items()
+リストxdataとリストydataの折れ線グラフに、赤いポイントマーカーを描画する	plt.plot(xdata, ydata, marker='.', markerfacecolor='r')
+標準入力から1行だけ改行なしで読む	sys.stdin.readline().rstrip()
+nにn2を足して代入する	n += n2
+xの百の位で丸める	round(x, -2)
+リストxdataとリストydataの線幅nの破線グラフを描画する	plt.plot(xdata, ydata, linestyle='dashed', linewidth=n)
+デックdeqのn番目に文字列elementを挿入する	deq.insert(n, element)
+折れ線グラフの色を赤くする	plt.plot(xdata, ydata, color='r')
+セットasetがセットaset2の上位集合か調べる	aset.issuperset(aset2)
+n年n2月n3日n4時n5分n6秒の日時	datetime.datetime(year=n, month=n2, day=n3, hour=n4, minite=n5, second=n6)
+sのの中でパターンpatternにマッチした文字列をreplで置き換える	re.sub(pattern, repl, s)
+nをn2だけ右シフトする	n >> n2
+sの末尾	s[-1]
+データ列dsを等間隔でn個にビン分割する	pd.cut(ds, n)
+s中にs2が含まれるか調べる	s2 in s
+日時dtからn週間分、減算する	dt - datetime.timedelta(weeks=n)
+データフレームdfの値が欠損値か調べる	df.isna()
+辞書adictを浅くコピーする	dict(adict)
+文字列elementがリストalistに含まれないか調べる	element not in alist
+全ての印字文字	string.printable
+sとs2を比較する	s == s2
+リストiterableからサンプリングする	random.sample(iterable)
+日時dtををn年後に進める	dt + datetime.timedelta(years=n)
+カウンタaCounterから最頻出の項目回数	aCounter.most_common(0)[1]
+オブジェクトobjをユーザ向けの文字列に変換する	str(obj)
+データ列dsをビン数nでビン分割する	pd.cut(ds, n)
+データフレームdfをサンプリングする	df.sample()
+sの両端から空白を取り除く	s.strip()
+オプションで、どの行もヘッダにしない	header = None
+データフレームdfのの中で、カラムcolとカラムcol2の重複を見る	df.duplicated(subset=[col1, col2])
+データフレームdfのカラムcolを0と1にマップする	df[col].map({s: 1, s2: 0})
+n年の日時	datetime.datetime(year=n, month=1, day=1)
+ガンマ関数	math.gamma(x)
+日時dtにn時間分、加算する	dt + datetime.timedelta(hours=n)
+本日の日時	datetime.datetime.now()
+xを浮動小数点数型に変換する	float(x)
+データフレームdfが正規分布からどの程度、歪んでいるか見る	df.kurt()
+データフレームdfが重複しているか調べる	df.duplicated()
+リストalistの各要素を関数funcに適用した結果でソートする	sorted(alist, key=func)
+xがNaNか調べる	math.isnan(x)
+fを一行ずつ読み込む	f.readline()
+アリスブルー色でリストxdataについてのヒストグラムを描画する	plt.hist(xdata, color='aliceblue')
+リストalistの先頭のn要素を取り除く	alist[n:]
+辞書adictを階層化する	collections.ChainMap(adict)
+n個の要素があるリスト	[element] * n
+データフレームdfのカラムcolの分	df[col].dt.minute
+カウンタaCounterを高頻出順に列挙する	aCounter.most_common()
+sをs2で二分し、前半の文字列を使う	s.partition(s2)[0]
+サイコロ	random.randint(1, 6)
+nから無限にカウントアップする	itertools.count(start=n)
+x,x2,x3をそれぞれn,n2,n3に設定する	x, x2, x3 = n, n2, n3
+alt(追加更新する	adict.update(adict2)
+リストxdataとリストydataの黒い破線グラフを描画する	plt.plot(xdata, ydata, linestyle='dashed', color='k')
+グラフのカラーパレットを濃くする	sns.set(pallete='deep')
+データフレームdfの要約統計量	df.describe()
+xを実部、x2を虚部とした複素数	complex(x, x2)
+辞書adictのkeyを文字列elementに設定する	adict[key] = element
+リストalistの要素を昇順にソートする	sorted(alist, reverse=False)
+辞書adictからカウンタを新規に作る	collections.Counter(adict)
+カウンタaCounterを辞書に変換する	dict(aCounter)
+データフレームdfのの中で、カラムcolに重複があるか見る	df.duplicated(subset=col)
+グラフ中の(x,x2)の位置に凡例を入れる	plt.legend(loc=(x, x2))
+再帰エラーを未然に防ぐ	sys.setrecursionlimit(1000000)
+nが2で割り切れないか調べる	n % 2 == 1
+日時dtからn年分、減算する	dt - datetime.timedelta(years=n)
+データフレームdfの数値をまとめて丸めて、インプレイスする	df.round(inplace=True)
+データフレームdfに重複があるか見る	df.duplicated()
+データフレームdfのカラムcolとカラムcol2を削除する	df.drop([col, col2], axis=1)
+データフレームdfのヒートマップを描画する	sns.heatmap(df.corr())
+破線グラフの色を赤にする	plt.plot(xdata, ydata, linestyle='dashed', color='r')
+リストalistが空でないか調べる	len(alist) != 0
+日時dtをn週間前に戻す	dt - datetime.timedelta(weeks=n)
+八進sをバイト列に変換する	int(s, 8).to_bytes(length=n2, byteorder='big')
+カウンタaCounterをリセットする	aCounter.clear()
+データフレームdf中のカラムcolとカラムcol2に重複があれば、削除する	df.drop_duplicates(subset=col)
+要素ひとつのタプル	(element,)
+nがn2と等しいか調べる	n == n2
+八進sを整数に変換する	int(s, 8)
+nとn2が等しいか調べる	n == n2
+sをs2で分けたときの前半の文字列	s.partition(s2)[0]
+空の両端キューを新しく作る	collections.deque()
+CSVファイルfilenameを読み込む	pd.read_csv(filename, sep=',')
+nからn2を引く	n - n2
+数式として、方程e=0を解く	sympy.solve(e)
+描画するグラフのサイズを横n縦n2に設定する	plt.figure(figsize=(n, n2))
+sを走査し、パターンpatternにマッチするか見る	re.search(pattern, s)
+昨日の日付	datetime.date.today() - datetime.timedelta(days=1)
+リストalistの要素を昇順にソートする	sorted(alist, reverse=True)
+データフレームdfの欠損値を最頻値で埋める	df.fillna(df.mode().iloc[0])
+リストiterableからn個、ランダムに選ぶ	random.choices(iterable, k=n)
+n〜n2の範囲の整数乱数を生成する	random.randint(n, n2)
+日時dtの時間数	dt.hour
+リストxdataとリストydataの折れ線グラフを描画して、色を赤くする	plt.plot(xdata, ydata, color='r')
+データフレームdfのsを欠損値に変換する	df.replace(s, np.nan)
+リストxdataについてのヒストグラムを描画して、半透明ににする	plt.hist(xdata, alpha=0.5)
+リストalistのn番目に文字列elementを挿入する	alist.insert(n, element)
+データフレームdfのカラムの名前をカラムcolからsに付け直す	df.rename(columns={col: s})
+数式として、eを微分する	sympy.diff(e)
+データフレームdf中に文字列valueと文字列value2がいくつあるか数える	df.isin([value, value2]).sum()
+10を底とするxの対数	math.log10(x)
+エクセルファイルファイルfilenameをデータフレームとして読み込む	pd.read_excel(filename)
+sの左側からs2を取り除く	s.lstrip(s2)
+nがn2以下、または、n3以上か調べる	n <= n2 or n >= n3
+nがn2の倍数か調べる	n % n2 == 0
+xのx2乗のx3剰余	pow(x, x2, x3)
+文字列elementがリストalistの要素か調べる	element in alist
+リストxdataをヒストグラムで描画する	plt.hist(xdata)
+リストxdataとリストydataの折れ線グラフを描画する	plt.plot(xdata, ydata)
+xをx2で割る	x / x2
+オブジェクトobjのtextプロパティの値を文字列elementに設定する	setattr(obj, text, element)
+データフレームdfのカラムcolの年	df[col].dt.year
+辞書adictから最後に追加したエントリを取り出す	adict.popitem()
+x2をxに代入する	x = x2
+nが-9以上、9以下か調べる	-9 <= n <= 9
+デックdeqの末尾に文字列elementを追加する	deq.append(element)
+データフレームdfの重複した行数のマスク	df.duplicated()
+sを末尾からs2で区切る	s.rsplit(s2)
+リストxdataのヒストグラムを描画する	plt.hist(xdata)
+商と余りを同時に計算する	divmod(x, x2)
+ファイルfilenameからファイル名を使う	os.path.basename(filename)
+sのnからとn2までの間にs2が含まれないか調べる	s.find(s2, start=n, end=n2) == -1
+xの千の位で丸める	round(x, -3)
+日時dtが日時dt2より後ろか調べる	dt > dt2
+keyが辞書adict上で未定義か調べる	key not in adict
+デックdeqを空にする	deq.clear()
+標準入力を得る	sys.stdin
+nからn2未満までの整数乱数を生成する	random.randrange(n, n2)
+データフレームdfとデータフレームdf2を縦方向に連結する	pd.concat([df, df2])
+リストalistの全ての要素をクリアにする	alist.clear()
+ユーザが整数を入力する	int(input())
+デックdeqの先頭	deq[0]
+オプションで、読み込みモードに設定する	mode = 'r'
+リストxdataとリストydataについてリストalistの値に応じて、散布図の色を変える	plt.scatter(xdata, ydata, c=alist, cmap='Blues')
+xとx2をそれぞれnとn2とする	x, x2 = n, n2
+リストxdataとリストydataの青い破線グラフを描画する	plt.plot(xdata, ydata, linestyle='dashed', color='b')
+データフレームdfをカラムcol毎にグループ化して、グループの個数を求める	df.groupby(col).size()
+sを長さnでパディングする	s.zfill(n)
+グラフ中に凡例をsとs2と入れる	plt.legend([s, s2])
+n年n2月n3日n4時の日時	datetime.datetime(year=n, month=n2, day=n3, hour=n4)
+リストxdataとリストydataの折れ線グラフに、黒いポイントマーカーを描画する	plt.plot(xdata, ydata, marker='.', markerfacecolor='k')
+xとx2が近いか調べる	math.isclose(x, x2)
+カウンタaCounterから高頻出項目をn個、リストとして使う	aCounter.most_common(n)
+nをn2だけ左シフトする	n << n2
+全ての十六進数字	string.hexdigits
+sを左トリムする	s.lstrip()
+sの先頭からs2を探す	s.find(s2)
+データフレームdfをカラムcolによって昇順にソートして、更新する	df.sort_values(by=col, ascending=True, inplace=True)
+日時dtをISO形式の文字列に変換する	dt.isoformat()
+データフレームdfを見る	df.head()
+インデント付きで辞書adictを文字列に変換する	json.dumps(adict, ensure_ascii=False, indent=n)
+リストiterableから重複なく、n個ランダムに選ぶ	random.sample(iterable, k=n)
+数式として、eの因数分解を行う	sympy.factor(e)
+0からnまでの整数列	list(range(n+1))
+リストiterableとリストiterable2を連結する	itertools.chain(iterable, iterable2)
+s中のASCII限定のパターンpatternによる全てのマッチを使う	re.findall(pattern, s, flags=re.ASCI)
+sを全て英小文字に変換する	s.casefold()
+最大長をnにしてリストiterableから両端キューを作る	collections.deque(iterable, maxlen=n)
+オブジェクトobjのプロパティをsで指定して、その値を使う	getattr(obj, s)
+日時dtが火曜日か調べる	dt.weekday() == 1
+グラフ中のフォントを日本語表示に設定する	sns.set(font='IPAexGothic')
+リストiterableとリストiterable2の直積	itertools.product(iterable, iterable2)
+グラフ中に凡例を入れる	plt.legend()
+数式として、eの微分を求める	sympy.diff(e)
+sは全て印字できるか調べる	s.isprintable()
+デックdeqの末尾から要素を取り除く	deq.pop()
+改行	'\n'
+データフレームdfを100の位で丸める	df.round(-2)
+事前にパターンpatternをコンパイルする	re.compile(pattern)
+カウンタaCounterをカウントが多い順に列挙する	aCounter.most_common()
+__X__カラーパレットをグラフに使う	sns.set(pallete='deep')
+sを黒色で表示する	print(f'\033[30m{s}\033[0m')
+データフレームdfをカラムcol毎にグループ化する	df.groupby(col)
+透明度xの折れ線グラフを描画する	plt.plot(xdata, ydata, alpha=x)
+デックdeqの要素を右にローテートする	deq.rotate()
+リストxdataとリストydataについて散布図を描画して、sという凡例用のラベルを付ける	plt.scatter(xdata, xdata, label=s)
+リストalistの文字列elementの位置をエラーなく使う	alist.index(element) if element in alist else -1
+セットasetがセットaset2と交わりを持たないか調べる	aset.isdisjoint(aset2)
+プログラムの実行を正しく終了する	sys.exit(0)
+グラフのカラーパレットをsに設定する	sns.set(pallete=s)
+日時dtが日曜日か調べる	dt.weekday() == 6
+空のカウンタを新しく作る	collections.Counter()
+f全体を行単位で分割して読み込む	f.readlines()
+デックdeq中に文字列elementが含まれてるか調べる	element in deq
+x2をxに設定する	x = x2
+カウンタaCounterを集合に変換する	set(aCounter)
+データフレームdfから重複した行をドロップして、更新する	df.drop_duplicates(inplace=True)
+nが奇数か調べる	n % 2 == 1
+データフレームdfのカラムの名前の一覧を使う	df.columns
+日時dtにn月分、加算する	dt + datetime.timedelta(months=n)
+sの英大文字を英小文字に変換する	s.lower()
+辞書adictのキー一覧	list(adict)
+最大長nの両端キューをリストiterableから作る	collections.deque(iterable, maxlen=n)
+試しに何か動かす	print('Hello World')
+デックdeqの末尾にリストiterableの各要素を追加する	deq.extend(iterable)
+JSON形式のsを辞書に変換する	json.loads(s)
+データフレームdfとデータフレームdf2をカラムcolをキーにして結合する	pd.merge(df, df2, on=col)
+オプションで、読み込みモードを使う	mode = 'r'
+xの天井	math.ceil(x)
+有理数を使う	import fractions
+データフレームdf中の欠損値を削除する	df.dropna()
+日時dtが月曜日か調べる	dt.weekday() == 0
+データフレームdfのカラムの名前を付け直す	df.rename(columns={col: s})
+xの逆双曲線正接	math.atanh(x)
+グラフ中に凡例を(x,x2)の位置に入れる	plt.legend(loc=(x, x2))
+リストiterableからクラスCのインスタンスを新しく作る	C._make(iterable)  # issubclass(C, tuple)
+データフレームdfの欠損値を最頻値に設定する	df.fillna(df.mode().iloc[0])
+セットasetにリストiterableの要素を全て追加する	aset.update(iterable)
+折れ線グラフのラベルをsに設定する	plt.plot(xdata, ydata, label=s)
+リストalistのn番目からn2番目までの部分	alist[n:n2]
+データフレームdfのインデックスの名前の一覧	df.index
+日時dtが何分か知る	dt.minite
+nからn2までのスライス	slice(n, n2)
+リストiterableのコンビネーション	itertools.combinations(iterable, n)
+fにsを書き込む	f.write(s)
+xにおけるガンマ関数の値	math.gamma(x)
+オブジェクトobjが名前付きタプルか調べる	hasattr(obj, '_asdict') and hasattr(obj, '_fields')
+セットasetにリストiterableを追加更新する	aset.update(iterable)
+リストiterableから重複を取り除く	set(iterable)
+sのnからとn2までの間にs2が含まれるか調べる	s.find(s2, start=n, end=n2) != -1
+nではない	not n
+keyが辞書adict上で定義済みか調べる	key in adict
+それぞれnとn2をxとx2に代入する	x, x2 = n, n2
+nがn2で割り切れるか調べる	n % n2 == 0
+xを十六進文字列に変換する	x.hex()
+セットasetから任意の要素を取り出す	aset.pop()
+リストxdataとリストydataについての散布図に赤いポイントマーカーを描画する	plt.plot(xdata, ydata, marker='.', c='r')
+デックdeqが空か調べる	len(deq) == 0
+Pandasで、日付データのデータフレームdfのカラムcolをデータフレームdfのインデックスにする	df.index = pd.DatetimeIndex(df[col])
+xを浮動小数点数に変換する	float(x)
+データフレームdfのカラムcolのタイムゾーンをsに設定する	df[col].tz_convert(s)
+3数n,n2,n3の最大公約数	math.gcd(n, n2, n3)
+数式として、sをシンボルにして、zにする	z = sympy.symbol(s)
+辞書adictのコピーを得る	dict(adict)
+xとx2をそれぞれnとn2に設定する	x, x2 = n, n2
+線幅nの破線グラフを描画する	plt.plot(xdata, ydata, linestyle='dashed', linewidth=n)
+sに漢字が含まれるか調べる	re.search('[\u4E00-\u9FD0]', s)
+ファイルfilenameを読み込みモードでオープンして]、fとする	f = open(filename, mode='r')
+二進sを整数に変換する	int(s, 2)
+sのn番目からs2を探す	s.find(s2, start=n)
+データ列を使う	import pandas as pd
+CSVファイルからデータフレームを読み込む	pd.read_csv(filename, sep=',')
+ファイルfilenameから読み込みストリームをオープンして]、fとする	f = open(filename, mode='r')
+データフレームdfのカラムcolが何時か見る	df[col].dt.hour
+Pythonのバージョン	sys.version
+Pythonパスの一覧	sys.path
+文字列elementの無限イテラブル	itertools.repeat(element)
+カラーコードrgbのポイントマーカーで散布図を描画する	plt.plot(xdata, ydata, marker='.', c=rgb)
+日時dtからn月分、減算する	dt - datetime.timedelta(months=n)
+3数n,n2,n3の最小公倍数	math.lcm(n, n2, n3)
+オブジェクトobjとオブジェクトobj2は同一オブジェクトか調べる	obj is obj2
+日時dtからn日分、減算する	dt - datetime.timedelta(days=n)
+数式として、zについてeの微分を行う	sympy.diff(e, z)
+日時dtからn分、減算する	dt - datetime.timedelta(minutes=n)
+sのs2をカウントする	s.count(s2)
+コレクションを使う	import collections
+nの階乗	math.factorial(n)
+nとn2の最小公倍数	math.lcm(n, n2)
+オプションで、読み込むシートの名前をnamesに設定する	sheet_name = names
+デックdeqの要素をインプレースに反転する	deq.reverse()
+sを黒色にする	f'\033[30m{s}\033[0m'
+折れ線グラフのポイントマーカーを赤くする	plt.plot(xdata, ydata, marker='.', markerfacecolor='r')
+日時dtをn月前に戻す	dt - datetime.timedelta(months=n)
+データフレームdfの欠損値を最大値に設定する	df.fillna(df.max())
+sをバイト配列に変換する	bytearray(s)
+日時dtが何時か知る	dt.hour
+sの先頭でパターンpatternにマッチするか見る	re.match(pattern, s)
+グローバル変数の一覧	globals()
+文字列element∉セットaset	element not in aset
+aとa2を好き	a.index = a / 1
+s中のパターンpatternによるで置き換える	re.sub(pattern, repl, s)
+セットasetをイミュータブルなセットに変換する	frozenset(aset)
+最大長nの両端キューをリストiterableから作って、Xに代入する	X = collections.deque(iterable, maxlen=n)
+リストxdataとリストydataの折れ線グラフを描画して、マーカーをポイントに設定する	plt.plot(xdata, ydata, marker='.')
+リストiterableにリストiterable2を続けたイテラブル	itertools.chain(iterable, iterable2)
+JSON形式のsをデータに変換する	json.loads(s)
+リストxdataとリストydataの赤い破線グラフを描画する	plt.plot(xdata, ydata, linestyle='dashed', color='r')
+リストiterableからひとつランダムに選ぶ	random.choice(iterable)
+0から9までの配列を作る	np.arange(10)
+数式として、eのzにe2を代入する	e.subs(z, e2)
+リストiterableから両端キューを新しく作る	collections.deque(iterable)
+sをSJISのバイト列に変換する	s.encode(encoding='sjis', errors='ignore')
+sのnからn2までの範囲でs2をカウントする	s.count(s2, start=n, end=n2)
+原点からの(x,x2)の距離	math.hypot(x, x2)
+リストxdataについてのヒストグラムを描画する際に、透明度をxに設定する	plt.hist(xdata, alpha=x)
+オブジェクトobjにsという名前のプロパティが存在するか調べる	hasattr(obj, s)
+スクリプトファイルのディレクトリ名	os.path.dirname(os.path.abspath(__file__))
+デックdeqをデキューする	deq.popleft()
+整数nを符号付きでバイト列に変換する	n.to_bytes((n.bit_length() + 7) // 8, byteorder='big', signed=True)
+プラットホーム	sys.platform
+xの双曲線正弦の逆数	math.asinh(x)
+整数nの二進表現	bin(n)
+データフレームdfをインデックスによってソートする	df.sort_index()
+ファイルfilenameが存在するか調べる	os.path.exists(filename)
+破線グラフの色をアリスブルーに設定する	plt.plot(xdata, ydata, linestyle='dash', color='aliceblue')
+リストalistを引数として展開して表示する	print(*alist)
+nが1、もしくは2、もしくは3に等しいか調べる	n == 1 or n == 2 or n == 3
+日時dtが水曜日か調べる	dt.weekday() == 2
+データフレームdfのn行目からn2行目までを抽出する	df[n:n2]
+カウンタaCounterから最頻出の項目を使う	aCounter.most_common(0)[0]
+nをn2だけ減少させる	n -= n2
+nが無限に続く数列	itertools.repeat(n)
+第nコマンド引数を得る	sys.argv[n]
+セットasetとセットaset2の対称差集合	aset.symmetric_difference(aset2)
+セットasetとセットaset2の差集合	aset.difference(aset2)
+nが負の数か調べる	n < 0
+データフレームdfのカラムcolについてヒストグラムを描画する	plt.hist(df[col])
+データフレームdfのカラムの名前をまとめて、sをs2に置換する	df.columns = [str(x).replace(s, s2) for x in df.columns]
+バイトオーダを知る	sys.byteorder
