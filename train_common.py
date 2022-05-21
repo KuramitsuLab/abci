@@ -100,10 +100,15 @@ def encode_string(src, tgt, hparams):
     return src, tgt
 
 
+def transform_nop(src, tgt):
+    return src, tgt
+
+
 class TSVDataset(Dataset):
-    def __init__(self, hparams, dataset):
+    def __init__(self, hparams, dataset, transform=transform_nop):
         self.hparams = hparams
         self.dataset = dataset
+        self.transform = transform
         self.encode = hparams.encode
 
     def __len__(self):
@@ -111,6 +116,7 @@ class TSVDataset(Dataset):
 
     def __getitem__(self, index):
         src, tgt = self.dataset[index]
+        src, tgt = self.transform(src, tgt)
         return self.encode(src, tgt, self.hparams)
 
     def test_and_save(self, generate, filename, max=None):
@@ -132,7 +138,7 @@ class TSVDataset(Dataset):
             self.encode = encode_orig
 
 
-def load_TrainTestDataSet(hparams):
+def load_TrainTestDataSet(hparams, transform=transform_nop):
     train_files = []
     test_files = []
     for file in hparams.files:
@@ -142,7 +148,7 @@ def load_TrainTestDataSet(hparams):
             test_files.append(file)
         else:
             train_files.append(file)
-    return TSVDataset(hparams, _loading_dataset(hparams, train_files)), TSVDataset(hparams, _loading_dataset(hparams, test_files))
+    return TSVDataset(hparams, _loading_dataset(hparams, train_files), transform), TSVDataset(hparams, _loading_dataset(hparams, test_files), transform)
 
 
 class DADataset(Dataset):

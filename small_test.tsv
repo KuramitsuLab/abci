@@ -1,0 +1,10 @@
+xにx2を加える	x + x2
+データ列dsの時	ds.dt.hour
+グラフ中の(x,x2)の位置に凡例を入れる	plt.legend(loc=(x, x2))
+データフレームdfのカラムcolに重複があれば、マスクする	df.duplicated(subset=col)
+リストxdataとリストydataの線幅nの実線グラフを描画する	plt.plot(xdata, ydata, linestyle='solid', linewidth=n)
+データフレームdf中のカラムcolを四分位数ごとにビン分割する	pd.qcut(df[col], 4)
+折れ線グラフの左三角マーカーを緑色に設定する	plt.plot(xdata, ydata, marker='<', markerfacecolor='g')
+数式として、eの平方根を求める	sympy.sqrt(e)
+破線グラフの線幅をnに設定する	plt.plot(xdata, ydata, linestyle='dashed', linewidth=n)
+リストxdataとリストydataの折れ線グラフに、青い丸マーカーを描画する	plt.plot(xdata, ydata, marker='o', markerfacecolor='b')

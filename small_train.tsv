@@ -1,0 +1,10 @@
+リストxdataとリストydataについて散布図を描画して、三角マーカーの色をカラーコードrgbに設定する	plt.plot(xdata, ydata, marker='^', c=rgb)
+データ列dsの欠損値を中央値に設定する	ds.fillna(ds.median())
+リストxdataとリストydataについてライトグレー色の折れ線グラフを描画して、その線幅をnに設定する	plt.plot(xdata, ydata, linewidth=n, color='lightgray')
+リストxdataとリストydataについて散布図を描画して、マーカーの色をシャルトルーズに設定する	plt.plot(xdata, ydata, c='chartreuse')
+リストxdataとリストydataの破線グラフを描画して、その色を青にする	plt.plot(xdata, ydata, linestyle='dashed', color='b')
+リストxdataとリストydataについて破線グラフを描画して、その色をペルーに設定する	plt.plot(xdata, ydata, linestyle='dash', color='peru')
+ミディアムターコイズ色のマーカーで散布図を描画する	plt.plot(xdata, ydata, c='mediumturquoise')
+リストxdataとリストydataについての散布図をレモンシフォン色で重なりを見やすく描画する	plt.plot(xdata, ydata, c='lemonchiffon', alpha=0.5)
+それぞれnとn2をxとx2に代入する	x, x2 = n, n2
+sをシアンにする	f'\033[36m{s}\033[0m'
