@@ -143,7 +143,7 @@ def _greedy_decode(model, src, src_mask, device, max_len, beamsize, start_symbol
         out = out.transpose(0, 1)
         # prob.size() の実行結果 : torch.Size([1, 1088]) => 1088 はTGT のVOCAV_SIZE
         prob = model.generator(out[:, -1])
-        next_prob, next_word = prob.topk(k=beamsize, dim=1)
+        _, next_word = prob.topk(k=beamsize, dim=1)
 
         next_word = next_word[:, 0]     # greedy なので、もっとも確率が高いものを選ぶ
         next_word = next_word.item()   # 要素の値を取得 (int に変換)
@@ -166,7 +166,6 @@ def save_model(hparams, model, file='transformer-model.pt'):
     torch.save(dict(
         tokenizer=hparams.tokenizer_name_or_path,
         additional_tokens=hparams.additional_tokens,
-        bos='<unk>',
         num_encoder_layers=hparams.num_encoder_layers,
         num_decoder_layers=hparams.num_decoder_layers,
         emb_size=hparams.emb_size,
@@ -179,7 +178,7 @@ def save_model(hparams, model, file='transformer-model.pt'):
 
 
 def load_pretrained(filepath, device):
-    logging.info(f'md5: {filepath} {md5(filepath)}')
+    #logging.info(f'md5: {filepath} {md5(filepath)}')
     checkpoint = torch.load(filepath, map_location=device)
     print(list(checkpoint.keys()))
     tokenizer = AutoTokenizer.from_pretrained(checkpoint['tokenizer'])
@@ -205,7 +204,7 @@ def _generate(model, tokenizer, device, src_sentence: str):
                        max_length=128, truncation=True,
                        return_tensors='pt')   # input のtensor
     src = inputs['input_ids'].view(-1, 1).to(device)
-    start_idx = tokenizer.unk_token_id
+    start_idx = 3
     end_idx = tokenizer.eos_token_id
     num_tokens = src.shape[0]
     src_mask = (torch.zeros(num_tokens, num_tokens)).type(torch.bool)
@@ -217,14 +216,12 @@ def _generate(model, tokenizer, device, src_sentence: str):
 
 
 def load_nmt(filename='transformer-model.pt', device='cpu'):
-    logging.info(f'md5: {filename} {md5(filename)}')
+    #logging.info(f'md5: {filename} {md5(filename)}')
     if isinstance(device, str):
         device = torch.device(device)
     checkpoint = torch.load(filename, map_location=device)
     tokenizer = AutoTokenizer.from_pretrained(checkpoint['tokenizer'])
     tokenizer.add_tokens(checkpoint['additional_tokens'])
-    # for tok in checkpoint['additional_tokens']:
-    #     print(tok, tokenizer.vocab[tok], checkpoint['vocab_size'])
     model = Seq2SeqTransformer(
         checkpoint['num_encoder_layers'],
         checkpoint['num_decoder_layers'],
@@ -235,6 +232,7 @@ def load_nmt(filename='transformer-model.pt', device='cpu'):
         checkpoint['fnn_hid_dim']
     )
     model.load_state_dict(checkpoint['model'])
+    model.to(device)
     model.eval()
 
     def generate_greedy(s: str) -> str:

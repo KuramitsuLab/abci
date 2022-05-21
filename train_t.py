@@ -170,7 +170,7 @@ def get_optimizer_adamw(hparams, model):
 
 
 def transform_unk(src, tgt):
-    return src, f'<unk>{tgt}'
+    return src, tgt
 
 
 def _main():
@@ -225,12 +225,11 @@ def _main():
     save_model(hparams, model, f't_model{hparams.suffix}.pt')
     print('Testing', DEVICE)
     hparams.data_duplication = False
-    generate = load_nmt(f't_model{hparams.suffix}.pt', device=DEVICE)
+    generate = load_nmt(f't_model{hparams.suffix}.pt')
     valid_dataset.test_and_save(
         generate, f'result_test.tsv')
     train_dataset.test_and_save(
         generate, f'result_train.tsv', max=1000)
-
 
 # greedy search を使って翻訳結果 (シーケンス) を生成
 
