@@ -260,7 +260,7 @@ def parse_hparams(setups={}, Tokenizer=None):
     if hparams.project == 'test':
         print('***** TEST PROJECT *****')
         hparams.testing = True
-        hparams.max_epochs = 2
+        hparams.max_epochs = 3
     else:
         hparams.testing = False
 

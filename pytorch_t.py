@@ -26,12 +26,10 @@ def get_transform(tokenizer, max_length=128, max_target_length=None):
     def encode(src, max_length=max_length):
         inputs = tokenizer.encode(src, max_length=max_length,
                                   add_special_tokens=False, truncation=True, return_tensors='pt')
-        # print(inputs)
         input_ids = inputs[0] + 4
-        # print(input_ids)
         return torch.cat((torch.tensor([SOS_IDX]),
                           input_ids,
-                          torch.tensor([EOS_IDX])))
+                          torch.tensor([EOS_IDX]))).to(dtype=torch.long)
 
     def decode(output_ids):
         output_ids = [idx-4 for idx in output_ids if idx > 4]
@@ -58,7 +56,6 @@ class Seq2SeqTransformer(nn.Module):
                  dim_feedforward: int = 512,
                  dropout: float = 0.1):
         super(Seq2SeqTransformer, self).__init__()
-        # print('@vocab', src_vocab_size, tgt_vocab_size)
         encoder_layer = TransformerEncoderLayer(d_model=emb_size, nhead=nhead,
                                                 dim_feedforward=dim_feedforward)
         self.transformer_encoder = TransformerEncoder(
@@ -176,7 +173,7 @@ def train(train_iter, model, batch_size, loss_fn, optimizer):
     #collate_fn = string_collate(hparams)
     train_dataloader = DataLoader(
         train_iter, batch_size=batch_size, shuffle=True,
-        collate_fn=collate_fn, num_workers=1)
+        collate_fn=collate_fn, num_workers=2)
 
     for src, tgt in train_dataloader:
         src = src.to(DEVICE)
@@ -207,10 +204,9 @@ def evaluate(val_iter, model, batch_size, loss_fn):
     model.eval()
     losses = 0
 
-    #collate_fn = string_collate(hparams)
     val_dataloader = DataLoader(
         val_iter, batch_size=batch_size, shuffle=True,
-        collate_fn=collate_fn, num_workers=1)
+        collate_fn=collate_fn, num_workers=2)
 
     for src, tgt in val_dataloader:
         src = src.to(DEVICE)
@@ -233,28 +229,23 @@ def evaluate(val_iter, model, batch_size, loss_fn):
 
 
 # greedy search を使って翻訳結果 (シーケンス) を生成
+# https://kikaben.com/transformers-evaluation-details/#chapter-2
 
-
-def _greedy_decode(model, src, src_mask, max_len, beamsize, device):
+def _greedy_decode(model, src, src_mask, max_len, start_symbol, device):  # original
     src = src.to(device)
     src_mask = src_mask.to(device)
 
     memory = model.encode(src, src_mask)
-    ys = torch.ones(1, 1).fill_(SOS_IDX).type(torch.long).to(device)
+    ys = torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(device)
     for i in range(max_len-1):
         memory = memory.to(device)
-        tgt_mask = (generate_square_subsequent_mask(
-            ys.size(0)).type(torch.bool)).to(device)
+        tgt_mask = (generate_square_subsequent_mask(ys.size(0))
+                    .type(torch.bool)).to(device)
         out = model.decode(ys, memory, tgt_mask)
         out = out.transpose(0, 1)
-        # prob.size() の実行結果 : torch.Size([1, 1088]) => 1088 はTGT のVOCAV_SIZE
         prob = model.generator(out[:, -1])
-        next_prob, next_word = prob.topk(k=beamsize, dim=1)
-        # print(f'次に来るトークン候補 : {next_word}')
-        # print(f'その確率 : {next_prob}')
-
-        next_word = next_word[:, 0]     # greedy なので、もっとも確率が高いものを選ぶ
-        next_word = next_word.item()   # 要素の値を取得 (int に変換)
+        _, next_word = torch.max(prob, dim=1)
+        next_word = next_word.item()
 
         ys = torch.cat([ys,
                         torch.ones(1, 1).type_as(src.data).fill_(next_word)], dim=0)
@@ -262,8 +253,8 @@ def _greedy_decode(model, src, src_mask, max_len, beamsize, device):
             break
     return ys
 
-
 # 翻訳
+
 
 def md5(filename):
     with open(filename, 'rb') as f:
@@ -310,14 +301,14 @@ def load_nmt(filename, AutoTokenizer, device='cpu'):
     if isinstance(device, str):
         device = torch.device(device)
     model, tokenizer = load_pretrained(filename, AutoTokenizer, device)
-    model.eval()
     encode, decode, _ = get_transform(tokenizer)
 
-    def generate_greedy(src: str) -> str:
+    def generate_greedy(src: str, max_length=128) -> str:
+        model.eval()
         src = encode(src).view(-1, 1).to(device)
         num_tokens = src.shape[0]
         src_mask = (torch.zeros(num_tokens, num_tokens)).type(torch.bool)
         output_ids = _greedy_decode(
-            model, src, src_mask, max_len=num_tokens + 5, beamsize=5, device=device)
-        return decode(output_ids.flatten())
+            model, src, src_mask, max_len=max_length, start_symbol=SOS_IDX, device=device).flatten()
+        return decode(output_ids)
     return generate_greedy

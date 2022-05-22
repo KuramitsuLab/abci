@@ -19,9 +19,7 @@ from pytorch_t import (
 def get_optimizer(hparams, model):
     # オプティマイザの定義 (Adam)
     optimizer = torch.optim.Adam(
-        model.parameters(),
-        lr=hparams.learning_rate,
-        betas=(0.9, 0.98), eps=hparams.adam_epsilon
+        model.parameters(), lr=0.0001, betas=(0.9, 0.98), eps=1e-9
     )
     return optimizer
 
@@ -53,8 +51,8 @@ def get_optimizer_adamw(hparams, model):
 
 
 setup = dict(
-    model_name_or_path='google/mt5-small',
-    tokenizer_name_or_path='google/mt5-small',
+    model_name_or_path='megagonlabs/t5-base-japanese-web',
+    tokenizer_name_or_path='megagonlabs/t5-base-japanese-web',
     additional_tokens='<b> </b> <nl> <e0> <e1> <e2> <e3> <e4> <e5> <e6> <e7> <e8> <e9>',
     seed=42,
     encoding='utf_8',
@@ -75,7 +73,7 @@ setup = dict(
     emb_size=512,  # BERT の次元に揃えれば良いよ
     nhead=8,
     fnn_hid_dim=512,  # 変える
-    batch_size=32,
+    batch_size=8,
     num_encoder_layers=6,
     num_decoder_layers=6,
 )
@@ -113,7 +111,7 @@ def _main():
     loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 
     # オプティマイザの定義 (Adam)
-    optimizer = get_optimizer_adamw(hparams, model)
+    optimizer = get_optimizer(hparams, model)
 
     train_list = []
     valid_list = []
