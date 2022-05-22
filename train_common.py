@@ -12,15 +12,27 @@ from logging import StreamHandler, FileHandler, Formatter
 
 import torch
 from torch.utils.data import Dataset
-from tqdm import tqdm
 
 
-def _loading_dataset(hparams, files=None):
-    dataset = []
+def transform_nop(src, tgt):
+    return src, tgt
+
+
+def _append_data(dataset, src, tgt, transform, c):
+    src2, tgt2 = transform(src, tgt)
+    if c < 5:
+        logging.info(f'{src} -> {tgt}')
+        if src2 != src or tgt2 != tgt:
+            logging.info(f' => {src2} -> {tgt2}')
+    dataset.append((src2, tgt2))
+
+
+def _loading_dataset(hparams, files=None, transform=transform_nop):
     if files is None:
         files = hparams.files
     column = hparams.column
     target_column = hparams.target_column
+    dataset = []
     if target_column == -1:
         for file in files:
             logging.info(f'loading {file}')
@@ -28,18 +40,22 @@ def _loading_dataset(hparams, files=None):
                 sep = ',' if file.endswith('.csv') else '\t'
                 with io.open(file, encoding=hparams.encoding) as f:
                     reader = csv.reader(f, delimiter=sep)
-                    for row in reader:
-                        if column < len(row):
-                            dataset.append(row[column])
+                    for c, row in enumerate(reader):
+                        if column >= len(row):
+                            continue
+                        _append_data(dataset, row[column], None, transform, c)
             elif file.endswith('.jsonl'):
                 with io.open(file, encoding=hparams.encoding) as f:
-                    for line in f.readlines():
+                    for c, line in enumerate(f.readlines()):
                         data = json.loads(line)
-                        dataset.append(data[column])
+                        if column not in data:
+                            continue
+                        _append_data(dataset, data[column], None, transform, c)
             else:
                 with io.open(file, encoding=hparams.encoding) as f:
-                    for line in f.readlines():
-                        dataset.append(line.rstrip('\n'))
+                    for c, line in enumerate(f.readlines()):
+                        line = line.rstrip('\n')
+                        _append_data(dataset, line, None, transform, c)
     else:
         for file in files:
             logging.info(f'loading {file}')
@@ -47,28 +63,33 @@ def _loading_dataset(hparams, files=None):
                 sep = ',' if file.endswith('.csv') else '\t'
                 with io.open(file, encoding=hparams.encoding) as f:
                     reader = csv.reader(f, delimiter=sep)
-                    for row in reader:
+                    for c, row in enumerate(reader):
                         if column < len(row) and target_column < len(row):
                             src = row[column]
                             tgt = row[target_column]
-                            dataset.append((src, tgt))
+                            _append_data(dataset, src, tgt, transform, c)
             elif file.endswith('.jsonl'):
                 with io.open(file, encoding=hparams.encoding) as f:
-                    for line in f.readlines():
+                    for c, line in enumerate(f.readlines()):
                         data = json.loads(line)
-                        dataset.append((data[column], data[target_column]))
+                        if column in data and target_column in data:
+                            _append_data(
+                                dataset, data[column], data[target_column], transform, c)
             else:
                 with io.open(file, encoding=hparams.encoding) as f:
-                    for line in f.readlines():
+                    for c, line in enumerate(f.readlines()):
                         d = line.rstrip('\n')
-                        dataset.append((d, d))
+                        _append_data(
+                            dataset, d, d, transform, c)
     logging.info(f'loaded {len(dataset)} dataset')
+    if hparams.testing:
+        return dataset[:20]
     return dataset
 
 # MULTITASKING_TRANSFORM
 
 
-def encode_t5(src, tgt, hparams):
+def transform_t5(src, tgt, hparams):
     inputs = hparams.tokenizer.batch_encode_plus(
         [src],
         max_length=hparams.max_seq_length,
@@ -96,46 +117,39 @@ def encode_t5(src, tgt, hparams):
     }
 
 
-def encode_string(src, tgt, hparams):
-    return src, tgt
-
-
-def transform_nop(src, tgt):
-    return src, tgt
-
-
 class TSVDataset(Dataset):
-    def __init__(self, hparams, dataset, transform=transform_nop):
+    def __init__(self, hparams, dataset):
         self.hparams = hparams
         self.dataset = dataset
-        self.transform = transform
-        self.encode = hparams.encode
 
     def __len__(self):
         return len(self.dataset)
 
     def __getitem__(self, index):
         src, tgt = self.dataset[index]
-        src, tgt = self.transform(src, tgt)
-        return self.encode(src, tgt, self.hparams)
+        return src, tgt
 
     def test_and_save(self, generate, filename, max=None):
-        encode_orig = self.encode
-        self.encode = encode_string
-        try:
+        if self.hparams.testing:
+            max = 10
+        with open(filename, 'w') as f:
             c = 0
-            with open(filename, 'w') as f:
-                for src, tgt in self:
-                    gen = generate(src)
-                    print(f'{src}\t{gen}\t{tgt}', file=f)
-                    f.flush()
-                    if c % 10 == 0:
-                        print(f'{src}\t{gen}\t{tgt}')
-                    c += 1
-                    if max is not None and c > max:
-                        break
-        finally:
-            self.encode = encode_orig
+            if max is not None:
+                random.shuffle(self.dataset)
+            for src, tgt in self.dataset:
+                gen = generate(src)
+                print(f'{src}\t{gen}\t{tgt}', file=f)
+                f.flush()
+                if c % 10 == 0:
+                    logging.info(f'{src}\t{gen}\t{tgt}')
+                c += 1
+                if max is not None and c > max:
+                    break
+
+
+def load_DataSet(hparams, transform=transform_nop):
+    train_data = _loading_dataset(hparams, None, transform)
+    return TSVDataset(hparams, train_data)
 
 
 def load_TrainTestDataSet(hparams, transform=transform_nop):
@@ -148,105 +162,9 @@ def load_TrainTestDataSet(hparams, transform=transform_nop):
             test_files.append(file)
         else:
             train_files.append(file)
-    return TSVDataset(hparams, _loading_dataset(hparams, train_files), transform), TSVDataset(hparams, _loading_dataset(hparams, test_files), transform)
-
-
-class DADataset(Dataset):
-    def __init__(self, hparams, dataset=None):
-        self.hparams = hparams
-        self.dataset = dataset
-        if self.dataset is None:
-            self.dataset = _loading_dataset(self.hparams)
-        if hparams.masking:
-            self.transform = get_transform_masking(hparams)
-        else:
-            self.transform = transform_multitask
-        self.encode = hparams.encode
-
-    def __len__(self):
-        return len(self.dataset)
-
-    def __getitem__(self, index):
-        src, tgt = self.transform(self.dataset[index], self.hparams)
-        return self.encode(src, tgt, self.hparams)
-
-    def test_and_save(self, testing_fn, transform=None, file=sys.stdout):
-        encode_orig = self.encode
-        transform_orig = self.transform
-        if transform is not None:
-            self.transform = transform
-        self.encode = encode_string
-        try:
-            if self.hparams.progress_bar:
-                for src, tgt in tqdm(self):
-                    src, gen, tgt = testing_fn(src, tgt)
-                    print(f'{src}\t{gen}\t{tgt}', file=file)
-            else:
-                for src, tgt in self:
-                    src, gen, tgt = testing_fn(src, tgt)
-                    print(f'{src}\t{gen}\t{tgt}', file=file)
-        finally:
-            self.encode = encode_orig
-            self.transform = transform_orig
-
-
-class Subset(Dataset):
-    def __init__(self, dataset, indices):
-        self.dataset = dataset
-        self.indices = indices
-
-    def __getitem__(self, idx):
-        return self.dataset[self.indices[idx]]
-
-    def __len__(self):
-        return len(self.indices)
-
-
-class KFoldDataset(Dataset):
-    def __init__(self, dataset: Dataset, kfold=5):
-        self.allset = dataset
-        self.trainset = Subset(dataset, [])
-        self.validset = Subset(dataset, [])
-        self.kfold = 5
-        self.index = self.kfold
-
-    def __getitem__(self, idx):
-        return self.allset[idx]
-
-    def __len__(self):
-        return len(self.allset)
-
-    def split(self):
-        self.index += 1
-        kfold = self.kfold
-        index = self.index % kfold
-        train_index = []
-        valid_index = []
-        for i in range(len(self.allset)):
-            if i % kfold == index:
-                valid_index.append(i)
-            else:
-                train_index.append(i)
-        random.shuffle(train_index)
-        random.shuffle(valid_index)
-        self.trainset.indices = train_index
-        self.validset.indices = valid_index
-        return self.trainset, self.validset
-
-    def test_and_save(self, gen_fn=lambda src, tgt: (src, tgt, None), file=sys.stdout):
-        if isinstance(self.allset, DADataset):
-            if isinstance(file, str):
-                with open(file, 'w') as f:
-                    self.allset.test_and_save(gen_fn, file=f)
-            else:
-                self.allset.test_and_save(gen_fn, file=file)
-
-
-def _setup_extra_id(hparams):
-    if '<extra_id_0>' not in hparams.tokenizer.vocab:
-        hparams.tokenizer.add_tokens(
-            [f'<extra_id_{i}>' for i in range(100)])
-        hparams.vocab_size += 100
+    train_data = _loading_dataset(hparams, train_files, transform)
+    test_data = _loading_dataset(hparams, test_files, transform)
+    return TSVDataset(hparams, train_data), TSVDataset(hparams, test_data)
 
 # argparse
 
@@ -278,63 +196,33 @@ def _add_arguments(parser, args_dict):
             parser.add_argument(option_name, default=default)
 
 
-def init_hparams(init_dict, description='Trainer of mT5 on ABCI', Tokenizer=None):
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('files', nargs='+', help='files')
-    parser.add_argument('--name', type=str, default='', help='project name')
-    _add_arguments(parser, init_dict)
-    # parser.add_argument('-q', '--quantize', action='store_true',
-    #                     help='quantize model')
-    hparams = parser.parse_args()
-
-    if hparams.name == '':
-        hparams.suffix = ''
-        hparams.prefix = ''
-    else:
-        hparams.prefix = hparams.name
-        hparams.suffix = f'_{hparams.name}'
-        hparams.output_dir = f'{hparams.prefix}/{hparams.output_dir}'
-
-    _set_seed(hparams.seed)
-
-    if not os.path.isdir(hparams.output_dir):
-        os.makedirs(hparams.output_dir)
-
-    if hparams.masking or hparams.target_column == -1:
-        hparams.masking = True
-        hparams.target_column = -1
-
-    if hparams.additional_tokens == '':
-        hparams.additional_special_tokens = None
-    else:
-        hparams.additional_tokens = hparams.additional_tokens.split()
-
-    if Tokenizer is None:
-        hparams.encode = encode_string
-    else:
-        if not hasattr(hparams, 'use_fast_tokenizer'):
-            hparams.use_fast_tokenizer = False
-        os.environ['TOKENIZERS_PARALLELISM'] = 'false'
-        hparams.tokenizer = Tokenizer.from_pretrained(
-            hparams.tokenizer_name_or_path, is_fast=hparams.use_fast_tokenizer)
-        hparams.vocab_size = hparams.tokenizer.vocab_size
-        if hparams.additional_tokens:
-            hparams.tokenizer.add_tokens(hparams.additional_tokens)
-            hparams.vocab_size += len(hparams.additional_tokens)
-        if hparams.masking:
-            _setup_extra_id(hparams)
-        hparams.encode = encode_t5
-    hparams.data_duplication = True
-    # if not hasattr(hparams, 'da_choice'):
-    #     hparams.da_choice = 0.5
-    # if not hasattr(hparams, 'da_shuffle'):
-    #     hparams.da_shuffle = 0.5
-    _setup_logger(hparams)
-    return hparams
+DEFAULT_SETUP = dict(
+    model_name_or_path='google/mt5-small',
+    tokenizer_name_or_path='google/mt5-small',
+    additional_tokens='<b> </b> <nl> <e0> <e1> <e2> <e3> <e4> <e5> <e6> <e7> <e8> <e9>',
+    seed=42,
+    encoding='utf_8',
+    column=0, target_column=1,
+    max_length=128,
+    target_max_length=128,
+    progress_bar=False,
+    # unsupervised training option
+    masking=False,
+    masking_ratio=0.35,
+    masking_style='denoising_objective',
+    output_dir='model',  # path to save the checkpoints
+    # da
+    da_choice=1.0,
+    da_shuffle=1.0,
+    bos_token='',
+)
 
 
 def _setup_logger(hparams):
-    log_file = f'log{hparams.suffix}.txt'
+    if not os.path.isdir(hparams.output_dir):
+        os.makedirs(hparams.output_dir)
+
+    log_file = f'{hparams.output_dir}/log_{hparams.project}.txt'
 
     # ストリームハンドラの設定
     stream_handler = StreamHandler()
@@ -355,29 +243,55 @@ def _setup_logger(hparams):
     logging.info(f'hparams: {hparams}')
 
 
+def parse_hparams(setups={}, Tokenizer=None):
+    init_dict = DEFAULT_SETUP.copy()
+    init_dict.update(setups)
+    parser = argparse.ArgumentParser(description='train_data.py')
+    parser.add_argument('files', nargs='+', help='files')
+    parser.add_argument('--project', type=str,
+                        default='test', help='project name')
+    _add_arguments(parser, init_dict)
+    # parser.add_argument('-q', '--quantize', action='store_true',
+    #                     help='quantize model')
+    hparams = parser.parse_args()
+    hparams.output_dir = f'./{hparams.project}'
+    _setup_logger(hparams)
+
+    if hparams.project == 'test':
+        print('***** TEST PROJECT *****')
+        hparams.testing = True
+        hparams.max_epochs = 2
+    else:
+        hparams.testing = False
+
+    if hparams.masking or hparams.target_column == -1:
+        hparams.masking = True
+        hparams.target_column = -1
+
+    if hparams.additional_tokens == '':
+        hparams.additional_tokens = []
+    else:
+        hparams.additional_tokens = hparams.additional_tokens.split()
+
+    if Tokenizer is not None:
+        # if not hasattr(hparams, 'use_fast_tokenizer'):
+        #     hparams.use_fast_tokenizer = False
+        os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+        hparams.tokenizer = Tokenizer.from_pretrained(
+            hparams.tokenizer_name_or_path, is_fast=True)
+        hparams.vocab_size = hparams.tokenizer.vocab_size
+        if len(hparams.additional_tokens) > 0:
+            hparams.tokenizer.add_tokens(hparams.additional_tokens)
+            hparams.vocab_size += len(hparams.additional_tokens)
+        logging.info(
+            f'vocab_size: {hparams.tokenizer.vocab_size} {hparams.vocab_size}')
+
+    _set_seed(hparams.seed)
+    return hparams
+
+
 def _main():
-    init_dict = dict(
-        output_dir='./model',  # path to save the checkpoints
-        model_name_or_path='google/mt5-small',
-        tokenizer_name_or_path='google/mt5-small',
-        additional_tokens='<e0> <e1> <e2> <e3> <e4> <e5> <e6> <e7> <e8> <e9>',
-        seed=42,
-        encoding='utf_8',
-        column=0, target_column=1,
-        kfold=5,  # cross validation
-        max_seq_length=128,
-        target_max_seq_length=128,
-        progress_bar=False,
-        # da
-        da_choice=1.0,
-        da_shuffle=1.0,
-        bos_token='',
-        # unsupervised training option
-        masking=False,
-        masking_ratio=0.35,
-        masking_style='denoising_objective',
-    )
-    hparams = init_hparams(init_dict)
+    hparams = parse_hparams()
     print(hparams)
     load_TrainTestDataSet(hparams)
 

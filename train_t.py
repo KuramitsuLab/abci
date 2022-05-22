@@ -1,136 +1,19 @@
-from torch.nn.utils.rnn import pad_sequence
-from timeit import default_timer as timer
-from torch.utils.data import DataLoader
-
-from train_common import init_hparams, load_TrainTestDataSet
-from pytorch_t import Seq2SeqTransformer, create_mask, save_model, load_pretrained, load_nmt
-
+import logging
 import torch
 import torch.nn as nn
 
-from transformers import AutoTokenizer, get_linear_schedule_with_warmup
-#tokenizer = AutoTokenizer.from_pretrained("sonoisa/t5-base-japanese")
+from timeit import default_timer as timer
+from train_common import parse_hparams, load_TrainTestDataSet
 
-# print(torch.__version__)
-
+from transformers import AutoTokenizer
+from pytorch_t import (
+    Seq2SeqTransformer,
+    get_transform, train, evaluate,
+    save_model, load_pretrained, load_nmt,
+    PAD_IDX, DEVICE
+)
 
 # from morichan
-
-DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-PAD_IDX = 0
-
-# モデルが予測を行う際に、未来の単語を見ないようにするためのマスク
-
-
-def collate_fn(batch):
-    src_batch, tgt_batch = [], []
-    for b in batch:
-        src_batch.append(b["source_ids"])
-        tgt_batch.append(b["target_ids"])
-    src_batch = pad_sequence(src_batch, padding_value=PAD_IDX)
-    tgt_batch = pad_sequence(tgt_batch, padding_value=PAD_IDX)
-    return src_batch, tgt_batch
-
-
-def train(hparams, train_iter, model, loss_fn, optimizer):
-    model.train()
-    losses = 0
-
-    # 学習データ
-    #collate_fn = string_collate(hparams)
-    train_dataloader = DataLoader(
-        train_iter, batch_size=hparams.batch_size,
-        collate_fn=collate_fn, num_workers=hparams.num_workers)
-
-    for src, tgt in train_dataloader:
-        src = src.to(DEVICE)
-        tgt = tgt.to(DEVICE)
-
-        tgt_input = tgt[:-1, :]
-
-        src_mask, tgt_mask, src_padding_mask, tgt_padding_mask = create_mask(
-            src, tgt_input)
-
-        logits = model(src, tgt_input, src_mask, tgt_mask,
-                       src_padding_mask, tgt_padding_mask, src_padding_mask)
-
-        optimizer.zero_grad()
-
-        tgt_out = tgt[1:, :]
-        loss = loss_fn(
-            logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
-        loss.backward()
-
-        optimizer.step()
-        losses += loss.item()
-
-    return losses / len(train_dataloader)
-
-
-def evaluate(hparams, val_iter, model, loss_fn):
-    model.eval()
-    losses = 0
-
-    #collate_fn = string_collate(hparams)
-    val_dataloader = DataLoader(
-        val_iter, batch_size=hparams.batch_size,
-        collate_fn=collate_fn, num_workers=hparams.num_workers)
-
-    for src, tgt in val_dataloader:
-        src = src.to(DEVICE)
-        tgt = tgt.to(DEVICE)
-
-        tgt_input = tgt[:-1, :]
-
-        src_mask, tgt_mask, src_padding_mask, tgt_padding_mask = create_mask(
-            src, tgt_input)
-
-        logits = model(src, tgt_input, src_mask, tgt_mask,
-                       src_padding_mask, tgt_padding_mask, src_padding_mask)
-
-        tgt_out = tgt[1:, :]
-        loss = loss_fn(
-            logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
-        losses += loss.item()
-
-    return losses / len(val_dataloader)
-
-
-setup = dict(
-    output_dir='./model',  # path to save the checkpoints
-    model_name_or_path='',
-    tokenizer_name_or_path='google/mt5-small',
-    additional_tokens='<b> </b> <nl> <e0> <e1> <e2> <e3> <e4> <e5> <e6> <e7> <e8> <e9>',
-    seed=42,
-    encoding='utf_8',
-    column=0, target_column=1,
-    kfold=5,  # cross validation
-    max_seq_length=80,
-    target_max_seq_length=80,
-    # da
-    da_choice=0.5, da_shuffle=0.4, bos_token='<s>',
-    # unsupervised training option
-    masking=False,
-    masking_ratio=0.35,
-    masking_style='denoising',
-    # training
-    max_epochs=2,
-    num_workers=2,  # os.cpu_count(),
-    learning_rate=3e-4,
-    weight_decay=0.0,
-    adam_epsilon=1e-8,
-    # learning_rate=0.0001,
-    # adam_epsilon=1e-9,
-    # weight_decay=0
-    # Transformer
-    emb_size=512,  # BERT の次元に揃えれば良いよ
-    bos='<unk>',
-    nhead=8,
-    fnn_hid_dim=512,  # 変える
-    batch_size=32,
-    num_encoder_layers=6,
-    num_decoder_layers=6,
-)
 
 
 def get_optimizer(hparams, model):
@@ -169,26 +52,49 @@ def get_optimizer_adamw(hparams, model):
     return optimizer
 
 
-def transform_unk(src, tgt):
-    return src, tgt
+setup = dict(
+    model_name_or_path='google/mt5-small',
+    tokenizer_name_or_path='google/mt5-small',
+    additional_tokens='<b> </b> <nl> <e0> <e1> <e2> <e3> <e4> <e5> <e6> <e7> <e8> <e9>',
+    seed=42,
+    encoding='utf_8',
+    column=0, target_column=1,
+    kfold=5,  # cross validation
+    max_length=80,
+    target_max_length=80,
+    # training
+    max_epochs=30,
+    num_workers=2,  # os.cpu_count(),
+    learning_rate=3e-4,
+    weight_decay=0.0,
+    adam_epsilon=1e-8,
+    # learning_rate=0.0001,
+    # adam_epsilon=1e-9,
+    # weight_decay=0
+    # Transformer
+    emb_size=512,  # BERT の次元に揃えれば良いよ
+    nhead=8,
+    fnn_hid_dim=512,  # 変える
+    batch_size=32,
+    num_encoder_layers=6,
+    num_decoder_layers=6,
+)
 
 
 def _main():
-    global PAD_IDX
-    hparams = init_hparams(setup, Tokenizer=AutoTokenizer)
-    # print(hparams)
+    hparams = parse_hparams(setup, Tokenizer=AutoTokenizer)
+    _, _, transform = get_transform(
+        hparams.tokenizer, hparams.max_length, hparams.target_max_length)
     train_dataset, valid_dataset = load_TrainTestDataSet(
-        hparams, transform_unk)
+        hparams, transform=transform)
 
-    vocab_size = hparams.vocab_size
-    PAD_IDX = hparams.tokenizer.pad_token_id
-    print(f'PAD_IDX {PAD_IDX} <unk> {hparams.tokenizer.unk_token_id}')
     if hparams.model_name_or_path.endswith('.pt'):
         model = load_pretrained(hparams.model_name_or_path, DEVICE)
     else:
+        vocab_size = hparams.vocab_size
         model = Seq2SeqTransformer(hparams.num_encoder_layers, hparams.num_decoder_layers,
                                    hparams.emb_size, hparams.nhead,
-                                   vocab_size, vocab_size, hparams.fnn_hid_dim)
+                                   vocab_size+4, vocab_size+4, hparams.fnn_hid_dim)
 
     # TODO: ?
     for p in model.parameters():
@@ -211,25 +117,29 @@ def _main():
 
     train_list = []
     valid_list = []
-    print(f'start training max_epoch={hparams.max_epochs}')
+    logging.info(f'start training max_epochs={hparams.max_epochs}')
     for epoch in range(1, hparams.max_epochs+1):
         start_time = timer()
-        train_loss = train(hparams, train_dataset, model, loss_fn, optimizer)
+        train_loss = train(train_dataset, model,
+                           hparams.batch_size, loss_fn, optimizer)
         train_list.append(train_loss)
         end_time = timer()
-        val_loss = evaluate(hparams, valid_dataset, model, loss_fn)
+        val_loss = evaluate(valid_dataset, model, hparams.batch_size, loss_fn)
         valid_list.append(val_loss)
-        print(
+        logging.info(
             (f"Epoch: {epoch}, Train loss: {train_loss:.3f}, Val loss: {val_loss:.3f}, Epoch time = {(end_time - start_time):.3f}s"))
 
-    save_model(hparams, model, f't_model{hparams.suffix}.pt')
-    print('Testing', DEVICE)
-    hparams.data_duplication = False
-    generate = load_nmt(f't_model{hparams.suffix}.pt')
+    save_model(hparams, model,
+               f'{hparams.output_dir}/tf_{hparams.project}.pt')
+
+    print('Testing on ', DEVICE)
+    train_dataset, valid_dataset = load_TrainTestDataSet(hparams)
+    generate = load_nmt(
+        f'{hparams.output_dir}/tf_{hparams.project}.pt', AutoTokenizer=AutoTokenizer)
     valid_dataset.test_and_save(
-        generate, f'result_test.tsv')
+        generate, f'{hparams.output_dir}/result_test.tsv')
     train_dataset.test_and_save(
-        generate, f'result_train.tsv', max=1000)
+        generate, f'{hparams.output_dir}/result_train.tsv', max=1000)
 
 # greedy search を使って翻訳結果 (シーケンス) を生成
 
