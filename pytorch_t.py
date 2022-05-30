@@ -276,7 +276,7 @@ def save_model(hparams, model, file='transformer-model.pt'):
     logging.info(f'saving... {file} {md5(file)}')
 
 
-def load_pretrained(filename, AutoTokenizer, device='cpu'):
+def load_pretrained(filename, AutoTokenizer, device='cpu', dynamic_qint8=False):
     if isinstance(device, str):
         device = torch.device(device)
     checkpoint = torch.load(filename, map_location=device)
@@ -292,15 +292,22 @@ def load_pretrained(filename, AutoTokenizer, device='cpu'):
         checkpoint['fnn_hid_dim']
     )
     model.load_state_dict(checkpoint['model'])
+
+    if dynamic_qint8:
+        model = torch.quantization.quantize_dynamic(
+            model, {torch.nn.Linear}, dtype=torch.qint8
+        )
+
     model.to(device)
     model.train()
     return model, tokenizer
 
 
-def load_nmt(filename, AutoTokenizer, device='cpu'):
+def load_nmt(filename, AutoTokenizer, device='cpu', dynamic_qint8=False):
     if isinstance(device, str):
         device = torch.device(device)
-    model, tokenizer = load_pretrained(filename, AutoTokenizer, device)
+    model, tokenizer = load_pretrained(
+        filename, AutoTokenizer, device, dynamic_qint8)
     encode, decode, _ = get_transform(tokenizer)
 
     def generate_greedy(src: str, max_length=128) -> str:
